@@ -8,8 +8,8 @@ This version of xai_plugin was modified to be used on **CFW 4.88 Evilnat**
 
 ### Files that need to be modified (XMB/XAI strings)
 
-• **explore_plugin_full.rco**
-• **xai_plugin.rco**
+* **explore_plugin_full.rco**
+* **xai_plugin.rco**
 
 These files must contain proper strings lines so they can appear in the XMB
 
