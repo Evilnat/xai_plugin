@@ -28,6 +28,7 @@ For example:
 
 ### Options added in xai_plugin
 
+```
 * **Turn Off:** Turns off the PS3
 * **Hard Reboot:** Reboots the PS3 completely
 * **Soft Reboot:** Reboots the PS3 softly
@@ -99,3 +100,4 @@ For example:
 * **Log KLicense usage:** Saves filename and klicensee to log file
 * **Log Secure File ID usage:** Writes save data name and file ID key to log file
 * **Dump Disc Hash Key:** Retrieves disc hash key from an ORIGINAL game disc
+```
