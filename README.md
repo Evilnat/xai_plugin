@@ -99,5 +99,5 @@ For example:
 * **Dump PSID:** Saves PSID to log file
 * **Log KLicense usage:** Saves filename and klicensee to log file
 * **Log Secure File ID usage:** Writes save data name and file ID key to log file
-* **Dump Disc Hash Key:** Retrieves disc hash key from an ORIGINAL game disc
+• **Dump Disc Hash Key:** Retrieves disc hash key from an ORIGINAL game disc
 ```
