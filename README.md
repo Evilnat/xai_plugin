@@ -8,8 +8,8 @@ This version of xai_plugin was modified to be used on **CFW 4.88 Evilnat**
 
 ### Files that need to be modified (XMB/XAI strings)
 
-• **explore_plugin_full.rco**
-• **xai_plugin.rco**
+* **explore_plugin_full.rco**
+* **xai_plugin.rco**
 
 These files must contain proper strings lines so they can appear in the XMB
 
@@ -28,76 +28,74 @@ For example:
 
 ### Options added in xai_plugin
 
-• **Turn Off:** Turns off the PS3
-• **Hard Reboot:** Reboots the PS3 completely
-• **Soft Reboot:** Reboots the PS3 softly
-• **Reboot LV2:** Reboots the LV2
+* **Turn Off:** Turns off the PS3
+* **Hard Reboot:** Reboots the PS3 completely
+* **Soft Reboot:** Reboots the PS3 softly
+* **Reboot LV2:** Reboots the LV2
 
-• **FAN Speed:** Shows current FAN speed
-• **PS3 Temperature:** Shows current CPU and RSX temperature
-• **Show IDPS:** Shows current IDPS
-• **Show PSID:** Shows current PSID
-• **Toggle Coldboot:** Toggles between custom/original coldboot.raf
-• **Toggle System Version:** Toggles between custom/original system version in "System Information"
+* **FAN Speed:** Shows current FAN speed
+* **PS3 Temperature:** Shows current CPU and RSX temperature
+* **Show IDPS:** Shows current IDPS
+* **Show PSID:** Shows current PSID
+* **Toggle Coldboot:** Toggles between custom/original coldboot.raf
+* **Toggle System Version:** Toggles between custom/original system version in "System Information"
 
-• **Show accountID:** Shows current user's accountID
-• **Backup activation file:** Creates a backup of act.dat to /dev_usb or /dev_hdd0
-• **Disable account:** Deletes current user's activation file act.dat permanently
-• **Backup xRegistry.sys:** Creates a backup of xRegistry.sys to /dev_usb or /dev_hdd0
-• **Button Assignment:** Switches O and X buttons
+* **Show accountID:** Shows current user's accountID
+* **Backup activation file:** Creates a backup of act.dat to /dev_usb or /dev_hdd0
+* **Disable account:** Deletes current user's activation file act.dat permanently
+* **Backup xRegistry.sys:** Creates a backup of xRegistry.sys to /dev_usb or /dev_hdd0
+* **Button Assignment:** Switches O and X buttons
 
-• **Convert savedata:** Converts savedata from "/dev_usbXXX/PS3/SAVEDATA" to your own savedata
-• **Cobra Information:** Shows current Cobra information
-• **Activate account:** Creates act.dat file in the current local account
-• **Create license:** Creates RIF licenses from RAP files from "x:\exdata"
-• **Create accountID:** Creates a fake accountID for current user's in xRegistry
-• **Overwrite accountID:** Overwrites current user's accountID with a fake one in xRegistry
-• **Create Syscalls:** Create syscalls 6, 7, 8, 9, 10, 11, 15, 389 and 409
-• **Allow Restore Syscalls:** Allows restoring syscalls through "System Update"
-• **Skip license creation:** Skips overwriting license file (RIF) if it already exists
-• **Toggle "What's New":** Toggles "What's New" option in "PlayStation™ Network" tab
-• **Toggle Cobra:** Enables or disables Cobra (reboot is required)
+* **Convert savedata:** Converts savedata from "/dev_usbXXX/PS3/SAVEDATA" to your own savedata
+* **Cobra Information:** Shows current Cobra information
+* **Activate account:** Creates act.dat file in the current local account
+* **Create license:** Creates RIF licenses from RAP files from "x:\exdata"
+* **Create accountID:** Creates a fake accountID for current user's in xRegistry
+* **Overwrite accountID:** Overwrites current user's accountID with a fake one in xRegistry
+* **Create Syscalls:** Create syscalls 6, 7, 8, 9, 10, 11, 15, 389 and 409
+* **Allow Restore Syscalls:** Allows restoring syscalls through "System Update"
+* **Skip license creation:** Skips overwriting license file (RIF) if it already exists
+* **Toggle "What's New":** Toggles "What's New" option in "PlayStation™ Network" tab
+* **Toggle Cobra:** Enables or disables Cobra (reboot is required)
 
-• **Control FAN Mode:** DISABLED: Disables Cobra’s Control FAN
-• **Control Fan Mode:** SYSCON: Allows the PS3's SYSCON to control FAN speed
-• **Control Fan Mode:** MAX: Set Cobra FAN speed to 0xFF
+* **Control FAN Mode:** DISABLED: Disables Cobra’s Control FAN
+* **Control Fan Mode:** SYSCON: Allows the PS3's SYSCON to control FAN speed
+* **Control Fan Mode:** MAX: Set Cobra FAN speed to 0xFF
 
-• **Check QA Flags:** Check if QA flags are enabled or disabled
-• **Enable QA Flags:** Enables QA Flags
-• **Disable QA Flags:** Disables QA Flags
+* **Check QA Flags:** Check if QA flags are enabled or disabled
+* **Enable QA Flags:** Enables QA Flags
+* **Disable QA Flags:** Disables QA Flags
 
-• **Maximum temperature:** 60°C: Sets the fan speed dynamically to keep the system at a maximum temperature of 60°C
-• **Maximum Temperature:** 65°C: Sets the fan speed dynamically to keep the system at a maximum temperature of 65°C
-• **Maximum Temperature:** 70°C: Sets the fan speed dynamically to keep the system at a maximum temperature of 70°C
-• **Maximum Temperature:** 75°C: Sets the fan speed dynamically to keep the system at a maximum temperature of 75°C
+* **Maximum temperature:** 60°C: Sets the fan speed dynamically to keep the system at a maximum temperature of 60°C
+* **Maximum Temperature:** 65°C: Sets the fan speed dynamically to keep the system at a maximum temperature of 65°C
+* **Maximum Temperature:** 70°C: Sets the fan speed dynamically to keep the system at a maximum temperature of 70°C
+* **Maximum Temperature:** 75°C: Sets the fan speed dynamically to keep the system at a maximum temperature of 75°C
 
-• **Manual Speed:** 40%: Sets the fan speed statically at 40% (0x67)
-• **Manual Speed:** 45%: Sets the fan speed statically at 45% (0x75)
-• **Manual Speed:** 50%: Sets the fan speed statically at 50% (0x80)
-• **Manual Speed:** 55%: Sets the fan speed statically at 55% (0x8E)
-• **Manual Speed:** 60%: Sets the fan speed statically at 60% (0x9B)
-• **Manual Speed:** 65%: Sets the fan speed statically at 65% (0xA8)
-• **Manual Speed:** 70%: Sets the fan speed statically at 70% (0xB5)
-• **Manual Speed:** 75%: Sets the fan speed statically at 75% (0xC0)
-• **Manual Speed:** 80%: Sets the fan speed statically at 80% (0xCE)
-• **Manual Speed:** 85%: Sets the fan speed statically at 85% (0xDA)
-• **Manual Speed:** 90%: Sets the fan speed statically at 90% (0xE7)
+* **Manual Speed:** 40%: Sets the fan speed statically at 40% (0x67)
+* **Manual Speed:** 45%: Sets the fan speed statically at 45% (0x75)
+* **Manual Speed:** 50%: Sets the fan speed statically at 50% (0x80)
+* **Manual Speed:** 55%: Sets the fan speed statically at 55% (0x8E)
+* **Manual Speed:** 60%: Sets the fan speed statically at 60% (0x9B)
+* **Manual Speed:** 65%: Sets the fan speed statically at 65% (0xA8)
+* **Manual Speed:** 70%: Sets the fan speed statically at 70% (0xB5)
+* **Manual Speed:** 75%: Sets the fan speed statically at 75% (0xC0)
+* **Manual Speed:** 80%: Sets the fan speed statically at 80% (0xCE)
+* **Manual Speed:** 85%: Sets the fan speed statically at 85% (0xDA)
+* **Manual Speed:** 90%: Sets the fan speed statically at 90% (0xE7)
 
-• **PS2 Fan Mode:** DISABLED: Disables Control FAN on PS2 game
-• **PS2 Fan Mode:** SYSCON: Allows the PS3's SYSCON to control FAN speed on PS2 game
-• **PS2 Fan Mode:** 40%: Sets FAN speed to 0x66 on PS2 game
-• **PS2 Fan Mode:** 50%: Sets FAN speed to 0x80 on PS2 game
-• **PS2 Fan Mode:** 60%: Sets FAN speed to 0x9A on PS2 game
-• **PS2 Fan Mode:** 70%: Sets FAN speed to 0xB4 on PS2 game
-• **PS2 Fan Mode:** 80%: Sets FAN speed to 0xCE on PS2 game
-• **PS2 Fan Mode:** 90%: Sets FAN speed to 0xE8 on PS2 game
+* **PS2 Fan Mode:** DISABLED: Disables Control FAN on PS2 game
+* **PS2 Fan Mode:** SYSCON: Allows the PS3's SYSCON to control FAN speed on PS2 game
+* **PS2 Fan Mode:** 40%: Sets FAN speed to 0x66 on PS2 game
+* **PS2 Fan Mode:** 50%: Sets FAN speed to 0x80 on PS2 game
+* **PS2 Fan Mode:** 60%: Sets FAN speed to 0x9A on PS2 game
+* **PS2 Fan Mode:** 70%: Sets FAN speed to 0xB4 on PS2 game
+* **PS2 Fan Mode:** 80%: Sets FAN speed to 0xCE on PS2 game
+* **PS2 Fan Mode:** 90%: Sets FAN speed to 0xE8 on PS2 game
 
-• **View Log:** http://localhost/dev_hdd0/tmp/cfw_settings.log (webMAN MOD is required for this function)
-• **Clean Log File:** Resets /dev_hdd0/tmp/cfw_settings.log file
-• **Dump IDPS:** Saves IDPS to log file
-• **Dump PSID:** Saves PSID to log file
-• **Log KLicense usage:** Saves filename and klicensee to log file
-• **Log Secure File ID usage:** Writes save data name and file ID key to log file
-• **Dump Disc Hash Key:** Retrieves disc hash key from an ORIGINAL game disc
-
-
+* **View Log:** http://localhost/dev_hdd0/tmp/cfw_settings.log (webMAN MOD is required for this function)
+* **Clean Log File:** Resets /dev_hdd0/tmp/cfw_settings.log file
+* **Dump IDPS:** Saves IDPS to log file
+* **Dump PSID:** Saves PSID to log file
+* **Log KLicense usage:** Saves filename and klicensee to log file
+* **Log Secure File ID usage:** Writes save data name and file ID key to log file
+* **Dump Disc Hash Key:** Retrieves disc hash key from an ORIGINAL game disc
