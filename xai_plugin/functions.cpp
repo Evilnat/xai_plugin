@@ -105,9 +105,42 @@ uint64_t peekq(uint64_t addr)
 	return_to_user_prog(uint64_t);
 }
 
+uint8_t peekq8(uint64_t address) 
+{
+	return (peekq(address) >> 56) & 0xFFUL;
+}
+
+uint16_t peekq16(uint64_t address) 
+{
+	return (peekq(address) >> 48) & 0xFFFFUL;
+}
+
+uint32_t peekq32(uint64_t address) 
+{
+	return (peekq(address) >> 32) & 0xFFFFFFFFUL;
+}
+
 void pokeq( uint64_t addr, uint64_t val)
 {
 	system_call_2(7, addr, val);
+}
+
+void pokeq8(uint64_t addr, uint8_t value) 
+{
+	uint64_t old_value = peekq(addr);
+	pokeq(addr, ((uint64_t)value << 56) | (old_value & 0xFFFFFFFFFFFFFFULL));
+}
+
+void pokeq16(uint64_t addr, uint16_t value) 
+{
+	uint64_t old_value = peekq(addr);
+	pokeq(addr, ((uint64_t)value << 48) | (old_value & 0xFFFFFFFFFFFFULL));
+}
+
+void pokeq32(uint64_t address, uint32_t value) 
+{
+	uint64_t old_value = peekq(address);
+	pokeq(address, ((uint64_t)value << 32) | (old_value & 0xFFFFFFFFULL));
 }
 
 int sys_sm_shutdown(uint16_t op)
@@ -176,4 +209,25 @@ int sys_sm_control_led(uint8_t led_id,uint8_t led_action)
 { 	
 	system_call_2(386, (uint64_t)led_id,(uint64_t)led_action);
 	return_to_user_prog(int);
+}
+
+uint8_t check_firmware(uint32_t *version)
+{
+    system_call_1(387, (uint32_t)version);
+	*version = *version >> 12;
+	return_to_user_prog(int);
+}
+
+uint64_t check_kernel(uint64_t *type)
+{
+	system_call_1(985, (uint32_t)type);
+	return_to_user_prog(int);
+}
+
+int check_syscalls()
+{
+	if(peekq(SYSCALL_TABLE) == DISABLED)
+		return 0;
+	
+	return 1;
 }

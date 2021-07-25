@@ -7,6 +7,7 @@ void setlogpath(char *path);
 static int (*vsh_sprintf)( char*, const char*,...);
 static int (*vsh_swprintf)(wchar_t *, size_t, const wchar_t *,...);
 
+int sprintf_(char *str, const char *format, int v1);
 int sprintf_(char *str, const char *format, int v1, int v2);
 int sprintf_(char *str, const char *format, int v1, int v2, int v3);
 int sprintf_(char *str, const char *format, int v1, int v2, int v3, int v4);
@@ -39,5 +40,3 @@ void notify(char *param);
 void notify(const char *format, int param1);
 void notify(const char *format, int param1, int param2);
 void notify(const char *format, int param1, int param2, int param3);
-
-void dump_file(const char *path, void *buffer, int size);

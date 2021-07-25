@@ -14,6 +14,7 @@
 #include "functions.h"
 #include "gccpch.h"
 #include "des.h"
+#include "erk.h"
 
 extern "C" int _videorec_export_function_video_rec(void);
 extern "C" int _videorec_export_function_klicensee(void);
@@ -41,6 +42,9 @@ eid2_struct eid2;
 download_if *download_interface;
 game_ext_plugin_interface *game_ext_interface;
 explore_plugin_interface *explore_interface;
+
+static uint8_t cconfig[sizeof(CobraConfig)];
+static CobraConfig *cobra_config = (CobraConfig*) cconfig;
 
 int cellFsUtilUnMount(const char *device_path, int r4)
 {
@@ -200,9 +204,11 @@ int create_rifs()
 	char USB[120], rap_file[120];
 	char rif_file[120], contentID[36];
 
-
-	if(check_cobra_and_syscall())
-		return 1;	
+	if(!check_cobra_version())
+	{
+		ShowMessage("msg_syscall8_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return 1;
+	}
 
 	for(int i = 0; i < 127; i++)
 	{
@@ -315,8 +321,11 @@ int patch_savedata()
 	char string_sfo[120], string_pfd[120];
 	char USB[120], source[120];	
 
-	if(check_cobra_and_syscall())
-		return 1;	
+	if(!check_cobra_version())
+	{
+		ShowMessage("msg_syscall8_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return 1;
+	}
 
 	for(int i = 0; i < 127; i++)
 	{
@@ -534,8 +543,11 @@ void changeAccountID(bool force)
 	if(force)
 		close_xml_list();
 
-	if(check_cobra_and_syscall())
+	if(!check_cobra_version())
+	{
+		ShowMessage("msg_syscall8_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 		return;
+	}
 
 	uint32_t userID = xUserGetInterface()->GetCurrentUserNumber();
 
@@ -647,19 +659,244 @@ void remove_license()
 
 int create_syscalls()
 {
-	if(check_cobra_and_syscall())
-		return 1;
+	CellFsStat stat;
+	system_call_2(808, (uint64_t)"/dev_flash/vsh/module/software_update_plugin.sprx", (uint64_t)&stat);
 
-	system_call_3(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_CREATE_CFW_SYSCALLS, 8); 
-	ShowMessage("msg_create_syscalls_ok", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+	if(peekq(SYSCALL_TABLE) != DISABLED)
+		ShowMessage("msg_create_syscalls_ok", (char *)XAI_PLUGIN, (char*)TEX_SUCCESS);
+	else
+		ShowMessage("msg_create_syscalls_error", (char *)XAI_PLUGIN, (char*)TEX_ERROR);
+
+    return 0;
+}
+
+int dump_lv(int lv)
+{
+	int final_offset;
+	int mem = 0, max_offset = 0x40000;
+	int fd, fseek_offset = 0, start_offset = 0;
+
+	char usb[120], dump_file_path[120], lv_file[120];
+	const char *dumping, *lv_dump, *lv_dumped, *lv_error;
+
+	uint8_t platform_info[0x18];
+	uint64_t nrw, seek, offset_dumped;
+	CellFsStat st;	
+
+	if(peekq(SYSCALL_TABLE) == DISABLED)
+	{
+		ShowMessage("msg_cfw_syscalls_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return 1;
+	}
+	
+    system_call_1(387, (uint64_t)platform_info);
+
+	if(lv == LV2)
+	{
+		final_offset = 0x800000;
+		dumping = "msg_lv2_dumping";	
+		lv_dumped = "msg_lv2_dumped";
+		lv_error = "msg_lv2_dump_error";
+		lv_dump = LV2_DUMP;
+	}
+	else 
+	{
+		final_offset = 0x1000000;
+		dumping = "msg_lv1_dumping";	
+		lv_dumped = "msg_lv1_dumped";
+		lv_error = "msg_lv1_dump_error";
+		lv_dump = LV1_DUMP;
+	}
+
+	ShowMessage(dumping, (char *)XAI_PLUGIN, (char *)TEX_INFO2);
+
+	sprintf_(lv_file, lv_dump, platform_info[0], platform_info[1], platform_info[2] >> 4);	
+	sprintf_(dump_file_path, "%s/%s", (int)TMP_FOLDER, (int)lv_file);
+
+	for(int i = 0; i < 127; i++)
+	{				
+		sprintf_(usb, "/dev_usb%03d", i, NULL);
+
+		if(!cellFsStat(usb, &st))
+		{
+			sprintf_(dump_file_path, "%s/%s", (int)usb, (int)lv_file);
+			break;
+		}
+	}
+
+	if(cellFsOpen(dump_file_path, CELL_FS_O_CREAT | CELL_FS_O_TRUNC | CELL_FS_O_RDWR, &fd, 0, 0) != SUCCEEDED)
+	{
+		ShowMessage(lv_error, (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return 1;
+	}
+
+	cellFsChmod(dump_file_path, 0666);
+
+	// Quickest method to dump LV2 and LV1 through xai_plugin
+	// Default method will take at least two minutes to dump LV2, and even more for LV1
+	uint8_t *dump = (uint8_t *)malloc_(0x40000);
+	memset(dump, 0, 0x40000);			
+
+	for(uint64_t offset = start_offset; offset < max_offset; offset += 8)
+	{
+		if(lv == LV2)
+			offset_dumped = peekq(0x8000000000000000ULL + offset);
+		else
+			offset_dumped = lv1_peek(0x8000000000000000ULL + offset);
+
+		memcpy(dump + mem, &offset_dumped, 8);
+
+		mem += 8;
+
+		if(offset == max_offset - 8)
+		{
+			cellFsLseek(fd, fseek_offset, SEEK_SET, &seek);
+			if(cellFsWrite(fd, dump, 0x40000, &nrw) != SUCCEEDED)
+			{
+				free_(dump);				
+				cellFsClose(fd);
+				cellFsUnlink(dump_file_path);
+
+				ShowMessage(lv_error, (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+
+				return 1;
+			}
+
+			// Done dumping
+			if(max_offset == final_offset)
+				break;
+
+			fseek_offset += 0x40000;
+			memset(dump, 0, 0x40000);
+			mem = 0;
+
+			start_offset = start_offset + 0x40000;
+			max_offset = max_offset + 0x40000;
+		}		
+	}
+
+	free_(dump);
+	cellFsClose(fd);
+
+	int string = RetrieveString(lv_dumped, (char*)XAI_PLUGIN);	
+	swprintf_(wchar_string, 120, (wchar_t*)string, (int)dump_file_path);	
+	PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
 
 	return 0;
 }
 
+int dumpERK()
+{
+	uint32_t firmware;
+	check_firmware(&firmware);
+
+	uint64_t kernel;
+	check_kernel(&kernel);
+
+	if(firmware < 0x4080 && kernel == 1 || firmware < 0x4080 && kernel == 2)
+	{
+		ShowMessage("msg_unsupported_firmware", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return -1;
+	}
+
+	if(peekq(SYSCALL_TABLE) == DISABLED)
+	{
+		ShowMessage("msg_cfw_syscalls_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return -1;
+	}
+
+	ShowMessage("msg_dumping_erk", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
+
+	dumperk();	
+}
+
+int removeSysHistory()
+{
+	int user_id = 0;
+	char xml_delete[100], dat_delete[100];
+    char CI_delete[100], MI_delete[100], PTL_delete[100];
+	CellFsStat stat;
+
+	static uint16_t syscalls[17] = 
+	{ 
+		1022, 204, 203, 202, 201, 200, 9, 10, 11, 15, 20, 35, 36, 38, 6, 8, 7
+	};
+
+	if(peekq(SYSCALL_TABLE) == DISABLED)
+	{
+		ShowMessage("msg_syscalls_already_disabled", (char *)XAI_PLUGIN, (char *)TEX_WARNING);
+		return 1;
+	}
+
+	uint64_t syscall_not_impl = peekq(SYSCALL_TABLE);
+
+	if(check_cobra_version())
+	{
+		//Cobra (17 syscalls)
+		for(uint8_t i = 0; i < 17; i++)			
+		{
+			system_call_3(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_DISABLE_SYSCALL, (uint64_t)syscalls[i]); 				
+		}
+	}
+
+	// Normal (17 syscalls)
+	for(uint8_t i = 0; i < 17; i++)
+		pokeq(SYSCALL_TABLE + 8 * syscalls[i], syscall_not_impl);
+
+	if(peekq(SYSCALL_TABLE) != DISABLED)
+	{
+		ShowMessage("msg_syscalls_disabling_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+        return 1;
+	}	
+
+	// Deleting history files
+	while(user_id != 200)
+    {        
+        sprintf_(xml_delete, "/dev_hdd0/home/%08d/webbrowser/history.xml", user_id);
+        sprintf_(dat_delete, "/dev_hdd0/home/%08d/etc/boot_history.dat"  , user_id);        
+        sprintf_(CI_delete, "/dev_hdd0/home/%08d/community/CI.TMP", user_id);
+        sprintf_(MI_delete, "/dev_hdd0/home/%08d/community/MI.TMP", user_id);
+        sprintf_(PTL_delete, "/dev_hdd0/home/%08d/community/PTL.TMP", user_id);
+
+		cellFsUnlink(xml_delete);
+		cellFsUnlink(dat_delete);
+		cellFsUnlink(CI_delete);
+		cellFsUnlink(MI_delete);
+		cellFsUnlink(PTL_delete);
+
+        if(!cellFsStat(xml_delete, &stat) || !cellFsStat(dat_delete, &stat) || !cellFsStat(CI_delete, &stat) || 
+		   !cellFsStat(MI_delete, &stat) || !cellFsStat(PTL_delete, &stat))
+		{
+			ShowMessage("msg_hf_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+            return 1;
+		}
+        
+        user_id++; 
+    }
+
+	ShowMessage("msg_syscalls_disabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
+}
+
+void checkSyscall(int syscall)
+{
+	int ret = 1;
+
+	system_call_3(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_CHECK_SYSCALL, syscall);
+	ret = (int)(p1);
+
+	if(!ret)
+		ShowMessage("msg_syscall8_status_enabled", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
+	else
+		ShowMessage("msg_syscall8_status_disabled", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
+}
+
 void check_QA()
 {	
-	if(check_cobra_and_syscall())
+	if(!check_cobra_version())
+	{
+		ShowMessage("msg_syscall8_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 		return;
+	}
 
 	system_call_2(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_CHECK_QA); 
 	int ret = (int)(p1);		
@@ -669,10 +906,11 @@ void check_QA()
 
 int set_qa(int value)
 {
-	int string;
-
-	if(check_cobra_and_syscall())
+	if(!check_cobra_version())
+	{
+		ShowMessage("msg_syscall8_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 		return -1;
+	}
 
 	system_call_3(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_SET_QA, value); 
 	int ret = (int)(p1);	
@@ -726,7 +964,7 @@ void show_cobra_info()
 
 	if(!cobra_version)
 	{
-		ShowMessage("msg_cobra_is_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		ShowMessage("msg_syscall8_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 		return;
 	}
 
@@ -747,14 +985,15 @@ void show_cobra_info()
 
 int save_ps2_fan_cfg(int mode)
 {
-	if(check_cobra_and_syscall())
-		return 1;	
-
-	if(check_cobra_version() < 0x830)
+	if(!check_cobra_version())
 	{
-		ShowMessage("msg_cobra_not_supported", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		ShowMessage("msg_syscall8_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 		return 1;
 	}
+
+	cobra_read_config(cobra_config);
+	cobra_config->ps2_speed = mode;   
+    cobra_write_config(cobra_config);
 
 	system_call_3(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_SET_PS2_FAN_SPEED, mode);
 
@@ -763,14 +1002,21 @@ int save_ps2_fan_cfg(int mode)
 
 int save_cobra_fan_cfg(int mode)
 {
-	if(check_cobra_and_syscall())
-		return 1;	
-
-	if(check_cobra_version() < 0x830)
+	if(!check_cobra_version())
 	{
-		ShowMessage("msg_cobra_not_supported", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
-		return 1;
+		// Supporting manual mode with Cobra disabled
+		if(mode >= 0x67 && mode < 0xFE)
+			sys_sm_set_fan_policy(0, 2, mode);
+		else
+		{
+			ShowMessage("msg_syscall8_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+			return 1;
+		}		
 	}
+
+	cobra_read_config(cobra_config);
+	cobra_config->fan_speed = mode;   
+    cobra_write_config(cobra_config);
 
 	system_call_3(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_SET_FAN_SPEED, mode);
 
@@ -786,38 +1032,36 @@ int RetrieveValue(uint16_t opcode)
 
 void allow_restore_sc()
 {
-	if(check_cobra_and_syscall())
-		return;	
-
-	if(check_cobra_version() < 0x830)
+	if(!check_cobra_version())
 	{
-		ShowMessage("msg_cobra_not_supported", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		ShowMessage("msg_syscall8_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 		return;
 	}	
 
-	int value = RetrieveValue(PS3MAPI_OPCODE_GET_RESTORE_SYSCALLS);
-	value = !value;
-	system_call_3(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_ALLOW_RESTORE_SYSCALLS, value);
+	cobra_read_config(cobra_config);
+	cobra_config->allow_restore_sc = !cobra_config->allow_restore_sc;
+    cobra_write_config(cobra_config);
 
-	ShowMessage(((int)value) ? "msg_syscalls_restore_enabled" : "msg_syscalls_restore_disabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+	system_call_3(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_ALLOW_RESTORE_SYSCALLS, (int)cobra_config->allow_restore_sc);
+
+	ShowMessage(((int)cobra_config->allow_restore_sc) ? "msg_syscalls_restore_enabled" : "msg_syscalls_restore_disabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 }
 
 void skip_existing_rif()
 {
-	if(check_cobra_and_syscall())
-		return;	
-
-	if(check_cobra_version() < 0x830)
+	if(!check_cobra_version())
 	{
-		ShowMessage("msg_cobra_not_supported", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		ShowMessage("msg_syscall8_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 		return;
 	}	
 
-	int value = RetrieveValue(PS3MAPI_OPCODE_GET_SKIP_EXISTING_RIF);
-	value = !value;
-	system_call_3(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_SKIP_EXISTING_RIF, value);
+	cobra_read_config(cobra_config);
+	cobra_config->skip_existing_rif = !cobra_config->skip_existing_rif;
+    cobra_write_config(cobra_config);
 
-	ShowMessage(((int)value) ? "msg_skip_rif_enabled" : "msg_skip_rif_disabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+	system_call_3(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_SKIP_EXISTING_RIF, (int)cobra_config->skip_existing_rif);
+
+	ShowMessage(((int)cobra_config->skip_existing_rif) ? "msg_skip_rif_enabled" : "msg_skip_rif_disabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 }
 
 void check_temp()
@@ -903,8 +1147,106 @@ int toggle_cobra()
 	int ret = 1;
 	CellFsStat statinfo;
 
-	const char *stage2_enabled = "/dev_blind/sys/stage2.bin";
-	const char *stage2_disabled = "/dev_blind/sys/stage2.bin.bak";
+	if(cellFsStat("/dev_blind", &statinfo) != CELL_OK)
+	{
+		ret = cellFsUtilMount("CELL_FS_IOS:BUILTIN_FLSH1", "CELL_FS_FAT", "/dev_blind", 0, 0, 0, 0);
+		log_function("xai_plugin", __VIEW__, "cellFsUtilMount", "(/dev_blind) = %x\n", ret);
+
+		if(ret != CELL_OK)
+		{
+			ShowMessage("msg_devblind_mount_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			return ret;
+		}
+	}
+
+	// Rebug
+	if(cellFsStat("/dev_flash/rebug", &statinfo) == CELL_OK)
+	{
+		int ret_cex, ret_dex;
+
+		if(cellFsStat(STAGE2_CEX_ENABLED, &statinfo) == CELL_OK && cellFsStat(STAGE2_DEX_ENABLED, &statinfo) == CELL_OK)
+		{
+			ret_cex = cellFsRename(STAGE2_CEX_ENABLED, STAGE2_CEX_DISABLED);
+			ret_dex = cellFsRename(STAGE2_DEX_ENABLED, STAGE2_DEX_DISABLED);
+
+			if(ret_cex || ret_dex)
+			{
+				ShowMessage("msg_cant_disable_cobra", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+				ret = 1;
+			}
+			else
+			{
+				ShowMessage("msg_cobra_disabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);			
+				ret = 0;
+				wait(2);
+			}
+		}
+		else if(cellFsStat(STAGE2_CEX_DISABLED, &statinfo) == CELL_OK && cellFsStat(STAGE2_DEX_DISABLED, &statinfo) == CELL_OK)
+		{
+			ret_cex = cellFsRename(STAGE2_CEX_DISABLED, STAGE2_CEX_ENABLED);
+			ret_dex = cellFsRename(STAGE2_DEX_DISABLED, STAGE2_DEX_ENABLED);
+
+			if(ret_cex || ret_dex)
+			{
+				ShowMessage("msg_cant_enable_cobra", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+				ret = 1;
+			}
+			else
+			{
+				ShowMessage("msg_cobra_enabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);			
+				ret = 0;
+				wait(2);
+			}
+		}
+		else
+		{
+			ret = 1;
+			ShowMessage("msg_stage2_rebug_not_found", (char*)XAI_PLUGIN, (char*)TEX_ERROR);	
+		}
+	}
+	else
+	{
+		if(cellFsStat(STAGE2_BIN_ENABLED, &statinfo) == CELL_OK)
+		{
+			ret = cellFsRename(STAGE2_BIN_ENABLED, STAGE2_BIN_DISABLED);
+
+			if(ret != CELL_OK)		
+				ShowMessage("msg_cant_disable_cobra", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			else
+			{
+				ShowMessage("msg_cobra_disabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);				
+				wait(2);
+			}
+		} 
+		else if(cellFsStat(STAGE2_BIN_DISABLED, &statinfo) == CELL_OK)
+		{
+			ret = cellFsRename(STAGE2_BIN_DISABLED, STAGE2_BIN_ENABLED);
+
+			if(ret != CELL_OK)				
+				ShowMessage("msg_cant_enable_cobra", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			else
+			{
+				ShowMessage("msg_cobra_enabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);		
+				wait(2);
+			}
+		}
+		else
+		{
+			ret = 1;
+			ShowMessage("msg_stage2_not_found", (char*)XAI_PLUGIN, (char*)TEX_ERROR);	
+		}
+	}
+
+	log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount("/dev_blind", 0));
+
+	return ret;
+}
+
+int toggle_cobra_version()
+{
+	char fw_type[16];
+	int ret = 1;
+	CellFsStat statinfo;
 
 	if(cellFsStat("/dev_blind", &statinfo) != CELL_OK)
 	{
@@ -913,37 +1255,145 @@ int toggle_cobra()
 
 		if(ret != CELL_OK)
 		{
-			ShowMessage("msg_devblind_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			ShowMessage("msg_devblind_mount_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
 			return ret;
 		}
 	}
+
+	// Rebug
+	if(cellFsStat("/dev_flash/rebug", &statinfo) == CELL_OK)
+	{
+		int ret_cex, ret_dex;
+
+		if(cellFsStat(STAGE2_CEX_ENABLED, &statinfo) != CELL_OK || cellFsStat(STAGE2_DEX_ENABLED, &statinfo) != CELL_OK)
+		{
+			ShowMessage("msg_please_enable_cobra", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			cellFsUtilUnMount("/dev_blind", 0);
+			return 1;
+		}
 		
-	if(cellFsStat(stage2_enabled, &statinfo) == CELL_OK)
-	{
-		ret = cellFsRename(stage2_enabled, stage2_disabled);
+		// stage2.cex.release/stage2.dex.release
+		if(cellFsStat(STAGE2_CEX_RELEASE, &statinfo) == CELL_OK && cellFsStat(STAGE2_DEX_RELEASE, &statinfo) == CELL_OK)
+		{
+			ret_cex = cellFsRename(STAGE2_CEX_ENABLED, STAGE2_CEX_DEBUG);
+			ret_dex = cellFsRename(STAGE2_DEX_ENABLED, STAGE2_DEX_DEBUG);
 
-		if(ret != CELL_OK)		
-			ShowMessage("msg_cant_disable_cobra", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			if(ret_cex || ret_dex)
+			{
+				cellFsUtilUnMount("/dev_blind", 0);
+				ShowMessage("msg_cobra_rename_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+				return 1;
+			}
+
+			ret_cex = cellFsRename(STAGE2_CEX_RELEASE, STAGE2_CEX_ENABLED);
+			ret_dex = cellFsRename(STAGE2_DEX_RELEASE, STAGE2_DEX_ENABLED);
+
+			if(ret_cex || ret_dex)
+			{
+				// Restore previous renaming
+				cellFsRename(STAGE2_CEX_DEBUG, STAGE2_CEX_ENABLED);
+				cellFsRename(STAGE2_DEX_DEBUG, STAGE2_DEX_ENABLED);
+		
+				cellFsUtilUnMount("/dev_blind", 0);
+				ShowMessage("msg_cobra_release_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+				return 1;
+			}
+
+			ShowMessage("msg_cobra_release_enabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
+
+			log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount("/dev_blind", 0));
+			return 0;
+		}
+		// stage2.cex.debug/stage2.dex.debug
+		else if(cellFsStat(STAGE2_CEX_DEBUG, &statinfo) == CELL_OK && cellFsStat(STAGE2_DEX_DEBUG, &statinfo) == CELL_OK)
+		{
+			ret_cex = cellFsRename(STAGE2_CEX_ENABLED, STAGE2_CEX_RELEASE);
+			ret_dex = cellFsRename(STAGE2_DEX_ENABLED, STAGE2_DEX_RELEASE);
+
+			if(ret_cex || ret_dex)
+			{
+				cellFsUtilUnMount("/dev_blind", 0);
+				ShowMessage("msg_cobra_rename_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+				return 1;
+			}
+
+			ret_cex = cellFsRename(STAGE2_CEX_DEBUG, STAGE2_CEX_ENABLED);
+			ret_dex = cellFsRename(STAGE2_DEX_DEBUG, STAGE2_DEX_ENABLED);
+
+			if(ret_cex || ret_dex)
+			{
+				// Restore previous renaming
+				cellFsRename(STAGE2_CEX_RELEASE, STAGE2_CEX_ENABLED);
+				cellFsRename(STAGE2_DEX_RELEASE, STAGE2_DEX_ENABLED);
+
+				cellFsUtilUnMount("/dev_blind", 0);
+				ShowMessage("msg_cobra_debug_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+				return 1;
+			}
+
+			ShowMessage("msg_cobra_debug_enabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
+
+			log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount("/dev_blind", 0));
+			return 0;
+		}
 		else
-			ShowMessage("msg_cobra_disabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
-				
-		wait(2);
-	} 
-	else if(cellFsStat(stage2_disabled, &statinfo) == CELL_OK)
-	{
-		ret = cellFsRename(stage2_disabled, stage2_enabled);
-
-		if(ret != CELL_OK)				
-			ShowMessage("msg_cant_enable_cobra", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-		else
-			ShowMessage("msg_cobra_enabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);		
-
-		wait(2);
+		{
+			ret = 1;
+			ShowMessage("msg_cobra_versions_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);	
+		}
 	}
+	// Normal
 	else
 	{
-		ret = 1;
-		ShowMessage("msg_stage2_not_found", (char*)XAI_PLUGIN, (char*)TEX_ERROR);	
+		if(cellFsStat(STAGE2_BIN_ENABLED, &statinfo) != CELL_OK)
+		{
+			ShowMessage("msg_please_enable_cobra", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			cellFsUtilUnMount("/dev_blind", 0);
+			return 1;
+		}
+		else if(cellFsStat(STAGE2_BIN_RELEASE, &statinfo) == CELL_OK)
+		{
+			ret = cellFsRename(STAGE2_BIN_ENABLED, STAGE2_BIN_DEBUG);
+
+			if(ret == CELL_OK)
+			{
+				ret = cellFsRename(STAGE2_BIN_RELEASE, STAGE2_BIN_ENABLED);
+
+				if(ret == CELL_OK)
+				{
+					ShowMessage("msg_cobra_release_enabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
+					wait(2);
+				}
+				else
+					ShowMessage("msg_cobra_release_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			}
+			else	
+				ShowMessage("msg_cobra_rename_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+		} 
+		else if(cellFsStat(STAGE2_BIN_DEBUG, &statinfo) == CELL_OK)
+		{
+			ret = cellFsRename(STAGE2_BIN_ENABLED, STAGE2_BIN_RELEASE);
+
+			if(ret == CELL_OK)
+			{
+				ret = cellFsRename(STAGE2_BIN_DEBUG, STAGE2_BIN_ENABLED);
+
+				if(ret == CELL_OK)
+				{
+					ShowMessage("msg_cobra_debug_enabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
+					wait(2);
+				}
+				else
+					ShowMessage("msg_cobra_debug_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			}
+			else	
+				ShowMessage("msg_cobra_rename_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+		} 
+		else
+		{
+			ret = 1;
+			ShowMessage("msg_cobra_versions_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);	
+		}
 	}
 
 	log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount("/dev_blind", 0));
@@ -967,7 +1417,7 @@ int toggle_sysconf()
 
 		if(ret != CELL_OK)
 		{
-			ShowMessage("msg_devblind_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			ShowMessage("msg_devblind_mount_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
 			return ret;
 		}
 	}
@@ -976,12 +1426,18 @@ int toggle_sysconf()
 	if(cellFsStat(sysconf_rco_original, &statinfo) == CELL_OK)
 	{
 		ret = cellFsRename(sysconf_rco_file, sysconf_rco_modded);
-		if(ret != CELL_OK)			
+		if(ret != CELL_OK)		
+		{
 			ShowMessage("msg_sysconf_swap_mod_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);			
+			return ret;
+		}
 			
 		ret = cellFsRename(sysconf_rco_original, sysconf_rco_file);				
 		if(ret != CELL_OK)	
+		{
 			ShowMessage("msg_sysconf_swap_ori_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			return ret;
+		}
 
 		log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount("/dev_blind", 0));
 		return ret;
@@ -990,12 +1446,18 @@ int toggle_sysconf()
 	else if(cellFsStat(sysconf_rco_modded, &statinfo) == CELL_OK)
 	{
 		ret = cellFsRename(sysconf_rco_file, sysconf_rco_original);
-		if(ret != CELL_OK)					
+		if(ret != CELL_OK)			
+		{
 			ShowMessage("msg_sysconf_swap_ori_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);			
+			return ret;
+		}
 
 		ret = cellFsRename(sysconf_rco_modded, sysconf_rco_file);
 		if(ret != CELL_OK)	
+		{
 			ShowMessage("msg_sysconf_swap_mod_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			return ret;
+		}
 
 		log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount("/dev_blind", 0));
 		return ret;
@@ -1025,7 +1487,7 @@ int toggle_coldboot()
 
 		if(ret != CELL_OK)
 		{
-			ShowMessage("msg_devblind_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			ShowMessage("msg_devblind_mount_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
 			return ret;
 		}
 	}
@@ -1241,11 +1703,25 @@ void backup_registry()
 void usb_firm_loader()
 {	
 	CellFsStat sb;
-	int ret = cellFsStat("/dev_usb", &sb);
+	char usb[120];
+	bool usb_found = false;
+	int usb_port;
+	//int ret = cellFsStat("/dev_usb", &sb);
 
-	if(ret != CELL_OK)
+	for(int i = 0; i < 127; i++)
 	{
-		ShowMessage("msg_usb_not_detected", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+		sprintf_(usb, "/dev_usb%03d", i, NULL);
+
+		if(!cellFsStat(usb, &sb))
+		{
+			usb_found = true;
+			usb_port = i;
+		}
+	}
+
+	if(!usb_found)
+	{
+		ShowMessage("msg_usb_not_detected", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 		return;
 	}
 
@@ -1280,7 +1756,7 @@ void usb_firm_loader()
 	}
 
 	// Jailcrab code
-	for (Current=Start;Current<Stop;Current = Current + 4)
+	for (Current = Start;Current < Stop; Current = Current + 4)
 	{
 		Data = peekq(Current);
 
@@ -1365,9 +1841,29 @@ bool patch_laidpaid_sserver2()
 // Decrypt EID2
 bool load_iso_root(void *iso_key, void *iso_iv)
 {	
-	int root_fd;
+	CellFsStat statinfo;
+	bool usb_found = false;
+	char eid_root_key[120], usb[120];
+	int root_fd, usb_port;
 	uint64_t nread;
-	int ret = cellFsOpen("/dev_usb/eid_root_key", CELL_FS_O_RDONLY, &root_fd, 0, 0);
+
+	sprintf_(eid_root_key, "/dev_hdd0/tmp/%s", (int)EID_ROOT_KEY_FILE_NAME);
+
+	for(int i = 0; i < 127; i++)
+	{
+		sprintf_(usb, "/dev_usb%03d", i, NULL);
+
+		if(!cellFsStat(usb, &statinfo))
+		{
+			usb_found = true;
+			usb_port = i;
+		}
+	}
+
+	if(usb_found)
+		sprintf_(eid_root_key, "/dev_usb%03d/%s", usb_port, (int)EID_ROOT_KEY_FILE_NAME);
+
+	int ret = cellFsOpen(eid_root_key, CELL_FS_O_RDONLY, &root_fd, 0, 0);
 
 	if(ret != CELL_OK)	
 		return false;		
@@ -1814,6 +2310,37 @@ void remarry_bd()
 		ShowMessage("msg_cex_init_ok", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
 }
 
+void toggle_devblind()
+{
+	int ret;
+	CellFsStat stat;
+
+	if(cellFsStat("/dev_blind", &stat) != CELL_OK)
+	{
+		ret = cellFsUtilMount("CELL_FS_IOS:BUILTIN_FLSH1", "CELL_FS_FAT", "/dev_blind", 0, 0, 0, 0);
+
+		if(ret != CELL_OK)
+		{
+			ShowMessage("msg_devblind_mount_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			return;
+		}
+
+		ShowMessage("msg_devblind_mounted", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
+	}
+	else
+	{
+		ret = cellFsUtilUnMount("/dev_blind", 0);
+
+		if(ret != CELL_OK)
+		{
+			ShowMessage("msg_devblind_unmount_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			return;
+		}
+
+		ShowMessage("msg_devblind_unmounted", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
+	}
+}
+
 void dump_disc_key()
 {
 	int ret;
@@ -2203,7 +2730,7 @@ int filecopy(const char *src, const char *dst)
 
 static void patch_lv1()
 {
-	for(uint64_t offset = 0x140000; offset < 0x170000; offset = offset + 4)
+	for(uint64_t offset = 0xA000; offset < 0x900000; offset = offset + 4)
 	{
 		if(lv1_peek(offset) == 0x2F666C682F6F732FULL || lv1_peek(offset) == 0x2F6C6F63616C5F73ULL)
 		{
@@ -2320,6 +2847,12 @@ void activate_account()
 	CellFsStat stat;
 	uint32_t userid = xUserGetInterface()->GetCurrentUserNumber();	
 
+	if(!check_cobra_version())
+	{
+		ShowMessage("msg_syscall8_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return;
+	}
+
 	sprintf_(act_path, ACT_DAT_PATH, (int)userid, NULL);
 	sprintf_(userID, "%08X", userid, NULL);
 	sprintf_(accountID, "/setting/user/%s/npaccount/accountid", (int)userID, NULL);
@@ -2343,122 +2876,13 @@ void activate_account()
 
 void enable_WhatsNew()
 {
-	char country[120], *NPlang, *NPcountry;
+	char country[120];
 	xUserGetInterface()->GetRegistryNpGuestCountry(country);
 
-	int systemLang;
-	xSettingSystemInfoGetInterface()->GetSystemLanguage(&systemLang);
-
-	if(systemLang == 0)
-	{
-		NPlang = "de";
-		NPcountry = "de";
-	}
-	else if(systemLang == 1)
-	{
-		NPlang = "en";
-		NPcountry = "us";
-	}
-	else if(systemLang == 2)
-	{
-		NPlang = "es";
-		NPcountry = "es";
-	}
-	else if(systemLang == 3)
-	{
-		NPlang = "fr";
-		NPcountry = "fr";
-	}
-	else if(systemLang == 4)
-	{
-		NPlang = "it";
-		NPcountry = "it";
-	}
-	else if(systemLang == 5)
-	{
-		NPlang = "nl";
-		NPcountry = "nl";
-	}
-	else if(systemLang == 6)
-	{
-		NPlang = "pt";
-		NPcountry = "pt";
-	}
-	else if(systemLang == 7)
-	{
-		NPlang = "ru";
-		NPcountry = "ru";
-	}
-	else if(systemLang == 8)
-	{
-		NPlang = "ja";
-		NPcountry = "jp";
-	}
-	else if(systemLang == 9)
-	{
-		NPlang = "ko";
-		NPcountry = "kr";
-	}
-	else if(systemLang == 10)
-	{
-		NPlang = "zh-t";
-		NPcountry = "cn";
-	}
-	else if(systemLang == 11)
-	{
-		NPlang = "zh-s";
-		NPcountry = "cn";
-	}
-	else if(systemLang == 12)
-	{
-		NPlang = "fi";
-		NPcountry = "fi";
-	}
-	else if(systemLang == 13)
-	{
-		NPlang = "sv";
-		NPcountry = "se";
-	}
-	else if(systemLang == 14)
-	{
-		NPlang = "da";
-		NPcountry = "dk";
-	}
-	else if(systemLang == 15)
-	{
-		NPlang = "no";
-		NPcountry = "no";
-	}
-	else if(systemLang == 16)
-	{
-		NPlang = "pl";
-		NPcountry = "pl";
-	}
-	else if(systemLang == 17)
-	{
-		NPlang = "pt-br";
-		NPcountry = "pt";
-	}
-	else if(systemLang == 18)
-	{
-		NPlang = "en-gb";
-		NPcountry = "gb";
-	}
-	else if(systemLang == 19)
-	{
-		NPlang = "tr";
-		NPcountry = "tw";
-	}
-	else
-	{
-		NPlang = "en-gb";
-		NPcountry = "gb";
-	}
-
 	if(country[0] == '\0')			
-	{
-		xUserGetInterface()->SetRegistryNpGuestCountry(NPcountry);
-		xUserGetInterface()->SetRegistryNpGuestLang(NPlang);
+	{		
+		xUserGetInterface()->SetRegistryNpGuestLang("en");
+		xUserGetInterface()->SetRegistryNpGuestCountry("us");
 		xUserGetInterface()->SetRegistryNpGuestBirth(0x07E50101);
 		xUserGetInterface()->SetRegistryFocusMask(0x10F);
 		ShowMessage("msg_whats_new_enabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);

@@ -67,25 +67,39 @@
     <ClCompile Include="cfw_settings.cpp" />
     <ClCompile Include="cobra.cpp" />
     <ClCompile Include="des.cpp" />
+    <ClCompile Include="erk.cpp" />
     <ClCompile Include="functions.cpp" />
+    <ClCompile Include="hvcall.cpp" />
     <ClCompile Include="log.cpp" />
+    <ClCompile Include="mm.cpp" />
+    <ClCompile Include="payload.cpp" />
     <ClCompile Include="prx.cpp" />
+    <ClCompile Include="util.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cfw_settings.h" />
     <ClInclude Include="cobra.h" />
+    <ClInclude Include="common.h" />
     <ClInclude Include="des.h" />
     <ClInclude Include="download_plugin.h" />
+    <ClInclude Include="erk.h" />
     <ClInclude Include="explore_plugin.h" />
     <ClInclude Include="functions.h" />
     <ClInclude Include="game_ext_plugin.h" />
     <ClInclude Include="gccpch.h" />
+    <ClInclude Include="hvcall.h" />
     <ClInclude Include="log.h" />
+    <ClInclude Include="mm.h" />
+    <ClInclude Include="payload.h" />
     <ClInclude Include="ps3_savedata_plugin.h" />
     <ClInclude Include="recording_settings.h" />
+    <ClInclude Include="util.h" />
     <ClInclude Include="x3.h" />
     <ClInclude Include="xmb_plugin.h" />
     <ClInclude Include="xRegistry.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="payloads.h" />
   </ItemGroup>
   <Import Condition="'$(ConfigurationType)' == 'Makefile' and Exists('$(VCTargetsPath)\Platforms\$(Platform)\SCE.Makefile.$(Platform).targets')" Project="$(VCTargetsPath)\Platforms\$(Platform)\SCE.Makefile.$(Platform).targets" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

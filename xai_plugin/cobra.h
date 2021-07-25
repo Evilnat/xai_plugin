@@ -26,6 +26,7 @@
 #define FAN_MANUAL_80	0xCE
 #define FAN_MANUAL_85	0xDA
 #define FAN_MANUAL_90	0xE7
+#define FAN_MANUAL_95	0xF4
 
 // PS2 Mode
 #define FAN_PS2_40		0x66
@@ -125,6 +126,7 @@
 #define PS3MAPI_OPCODE_CHECK_SYSCALL                    0x0091
 #define PS3MAPI_OPCODE_DISABLE_SYSCALL      			0x0092
 #define PS3MAPI_OPCODE_PDISABLE_SYSCALL8    			0x0093
+#define PS3MAPI_OPCODE_PCHECK_SYSCALL8 					0x0094
 #define PS3MAPI_OPCODE_CREATE_CFW_SYSCALLS				0x0095
 #define PS3MAPI_OPCODE_ALLOW_RESTORE_SYSCALLS			0x0096
 #define PS3MAPI_OPCODE_GET_RESTORE_SYSCALLS				0x0097
@@ -191,6 +193,9 @@ typedef struct
 } __attribute__((packed)) CobraConfig;
 
 int check_syscall8();
+
+int cobra_read_config(CobraConfig *cfg);
+int cobra_write_config(CobraConfig *cfg);
 
 int sys_get_version(uint32_t *version);
 int sys_get_version2(uint16_t *version);

@@ -1,16 +1,47 @@
 #ifndef _CFW_SETTINGS_H
 #define _CFW_SETTINGS_H
 
-#define XREGISTRY_FILE	"/dev_flash2/etc/xRegistry.sys"
-#define ACT_DAT_PATH	"/dev_hdd0/home/%08d/exdata/act.dat"
+#define STAGE2_BIN_ENABLED		"/dev_blind/sys/stage2.bin"
+#define STAGE2_BIN_DISABLED		"/dev_blind/sys/stage2.bin.bak"
+#define STAGE2_BIN_RELEASE		"/dev_blind/sys/stage2.bin.release"
+#define STAGE2_BIN_DEBUG		"/dev_blind/sys/stage2.bin.debug"
 
-#define TEX_ERROR		"tex_error_ws"
-#define TEX_SUCCESS		"tex_check2_ws"
-#define TEX_WARNING		"tex_warning"
-#define TEX_INFO		"tex_notification_info"
-#define TEX_INFO2		"tex_notification_info2"
-#define EXPLORE_PLUGIN	"explore_plugin"
-#define XAI_PLUGIN		"xai_plugin"
+#define STAGE2_CEX_ENABLED		"/dev_blind/rebug/stage2.cex"
+#define STAGE2_CEX_DISABLED		"/dev_blind/rebug/stage2.cex.bak"
+#define STAGE2_CEX_RELEASE		"/dev_blind/rebug/stage2.cex.release"
+#define STAGE2_CEX_DEBUG  		"/dev_blind/rebug/stage2.cex.debug"
+#define STAGE2_DEX_ENABLED		"/dev_blind/rebug/stage2.dex"
+#define STAGE2_DEX_DISABLED		"/dev_blind/rebug/stage2.dex.bak"
+#define STAGE2_DEX_RELEASE		"/dev_blind/rebug/stage2.dex.release"
+#define STAGE2_DEX_DEBUG  		"/dev_blind/rebug/stage2.dex.debug"
+
+#define RCO_DATE				"/dev_blind/vsh/resource/explore_plugin_full.rco.date"
+#define RCO_ORI					"/dev_blind/vsh/resource/explore_plugin_full.rco.ori"
+#define RCO_TEMP				"/dev_blind/vsh/resource/explore_plugin_full.rco.tmp"
+#define RCO_DEFAULT				"/dev_blind/vsh/resource/explore_plugin_full.rco"
+
+#define REGISTORE_XML			"/dev_blind/vsh/resource/explore/xmb/registory.xml"
+#define REGISTORE_XML_TMP		"/dev_blind/vsh/resource/explore/xmb/registory.xml.tmp"
+
+#define TMP_FOLDER				"/dev_hdd0/tmp"
+#define LV2_DUMP				"LV2-FW%X.%X%X.bin"
+#define LV1_DUMP				"LV1-FW%X.%X%X.bin"
+#define XREGISTRY_FILE			"/dev_flash2/etc/xRegistry.sys"
+#define ACT_DAT_PATH			"/dev_hdd0/home/%08d/exdata/act.dat"
+
+#define TEX_ERROR				"tex_error_ws"
+#define TEX_SUCCESS				"tex_check2_ws"
+#define TEX_WARNING				"tex_warning"
+#define TEX_INFO				"tex_notification_info"
+#define TEX_INFO2				"tex_notification_info2"
+#define EXPLORE_PLUGIN			"explore_plugin"
+#define XAI_PLUGIN				"xai_plugin"
+
+#define LV2					0
+#define LV1					1
+
+#define SYSCALL_TABLE	0x8000000000363BE0ULL
+#define DISABLED		0xFFFFFFFF80010003ULL
 
 #define PRODUCT_MODE_FLAG_OFFSET	0x48C07
 #define RECOVERY_MODE_FLAG_OFFSET	0x48C61
@@ -88,6 +119,8 @@ typedef struct function_descriptor
 } f_desc_t;
 
 void load_cfw_functions();
+int RetrieveString(const char *string, const char *plugin);
+void PrintString(wchar_t *string, const char *plugin, const char *tex_icon);
 
 void ShowMessage(const char *string, const char *plugin, const char *tex_icon);
 int patch_savedata();
@@ -99,6 +132,10 @@ void backup_license();
 void remove_license();
 
 int create_syscalls();
+int dump_lv(int lv);
+int dumpERK();
+int removeSysHistory();
+void checkSyscall(int syscall);
 
 void check_QA();
 int set_qa(int value);
@@ -125,6 +162,7 @@ void override_sfo();
 
 int toggle_cobra();
 
+int toggle_cobra_version();
 int toggle_sysconf();
 int toggle_coldboot();
 void button_assignment();
@@ -141,6 +179,7 @@ int loadKernel();
 int filecopy(const char *src, const char *dst);
 
 void remarry_bd();
+void toggle_devblind();
 void dump_disc_key();
 void control_led(const char * action);
 

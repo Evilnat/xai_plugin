@@ -160,11 +160,15 @@ static void plugin_thread(uint64_t arg)
 	else if(strcmp(action_thread, "lv2_reboot_action") == 0)	
 		xmb_reboot(SYS_LV2_REBOOT);
 
-	// Cobra options
+	// Cobra options		
+	else if(strcmp(action_thread, "disable_syscalls") == 0)	
+		removeSysHistory();		
 	else if(strcmp(action_thread, "patch_savedata") == 0)	
 		patch_savedata();		
 	else if(strcmp(action_thread, "cobra_info") == 0)	
 		show_cobra_info();
+	else if(strcmp(action_thread, "check_syscall8") == 0)	
+		checkSyscall(SC_COBRA_SYSCALL8);	
 	else if(strcmp(action_thread, "activate_account") == 0)	
 		activate_account();
 	else if(strcmp(action_thread, "create_rif_license") == 0)	
@@ -181,6 +185,11 @@ static void plugin_thread(uint64_t arg)
 		skip_existing_rif();	
 	else if(strcmp(action_thread, "enable_whatsnew") == 0)	
 		enable_WhatsNew();
+	else if(strcmp(action_thread, "cobra_version") == 0)
+	{		
+		if(toggle_cobra_version() == CELL_OK)
+			xmb_reboot(SYS_HARD_REBOOT);
+	}
 	else if(strcmp(action_thread, "cobra_mode") == 0)
 	{
 		if(toggle_cobra() == CELL_OK)
@@ -282,6 +291,11 @@ static void plugin_thread(uint64_t arg)
 		if(save_cobra_fan_cfg(FAN_MANUAL_90) == 0)
 			ShowMessage("msg_cobra_fan_manual_90", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
+	else if(strcmp(action_thread, "fan_manual_95") == 0)	
+	{
+		if(save_cobra_fan_cfg(FAN_MANUAL_95) == 0)
+			ShowMessage("msg_cobra_fan_manual_95", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+	}
 
 	// PS2 Fan modes
 	else if(strcmp(action_thread, "fan_ps2mode_disabled") == 0)	
@@ -382,6 +396,8 @@ static void plugin_thread(uint64_t arg)
 	}	
 	else if(strcmp(action_thread, "remarry_bd") == 0)			
 		remarry_bd();	
+	else if(strcmp(action_thread, "toggle_devblind") == 0)			
+		toggle_devblind();	
 	else if(strcmp(action_thread, "load_kernel") == 0)	
 		loadKernel();	
 	
@@ -392,6 +408,12 @@ static void plugin_thread(uint64_t arg)
 		dump_idps();	
 	else if(strcmp(action_thread, "dump_psid") == 0)	
 		dump_psid();
+	else if(strcmp(action_thread, "dump_erk") == 0)	
+		dumpERK();		
+	else if(strcmp(action_thread, "dump_lv2") == 0)	
+		dump_lv(LV2);		
+	else if(strcmp(action_thread, "dump_lv1") == 0)	
+		dump_lv(LV1);
 	else if(strcmp(action_thread, "log_klic") == 0)	
 		log_klic();	
 	else if(strcmp(action_thread, "log_secureid") == 0)	

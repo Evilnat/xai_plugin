@@ -3,11 +3,14 @@
 
 #include <stdio.h>
 
-#define SYS_SHUTDOWN					0x0100
-#define SYS_SHUTDOWN2					0x1100
-#define SYS_SOFT_REBOOT 				0x0200
-#define SYS_HARD_REBOOT					0x1200
-#define SYS_LV2_REBOOT					0x8201
+#define SYS_SHUTDOWN		0x0100
+#define SYS_SHUTDOWN2		0x1100
+#define SYS_SOFT_REBOOT 	0x0200
+#define SYS_HARD_REBOOT		0x1200
+#define SYS_LV2_REBOOT		0x8201
+
+#define SIGNIN_RCO_LOCK			"/dev_flash/vsh/resource/npsignin_plugin.lck"
+#define SIGNIN_RCO_UNLOCK		"/dev_flash/vsh/resource/npsignin_plugin.rco"
 
 typedef struct
 {
@@ -49,7 +52,13 @@ void sys_sm_set_fan_policy(uint8_t unknown , uint8_t fan_mode, uint8_t fan_speed
 uint64_t lv1_peek(uint64_t addr);
 void lv1_poke( uint64_t addr, uint64_t val);
 uint64_t peekq(uint64_t addr);
+uint8_t peekq8(uint64_t address);
+uint16_t peekq16(uint64_t address);
+uint32_t peekq32(uint64_t address);
 void pokeq( uint64_t addr, uint64_t val);
+void pokeq8(uint64_t addr, uint8_t value);
+void pokeq16(uint64_t addr, uint16_t value);
+void pokeq32(uint64_t address, uint32_t value);
 
 int sys_sm_shutdown(uint16_t op);
 void xmb_reboot(uint16_t op);
@@ -66,5 +75,10 @@ int sys_ss_get_console_id(void *idps);
 int sys_ss_get_open_psid(void *psid);
 
 int sys_sm_control_led(uint8_t led_id,uint8_t led_action);
+
+uint8_t check_firmware(uint32_t *version);
+uint64_t check_kernel(uint64_t *type);
+
+int check_syscalls();
 
 #endif

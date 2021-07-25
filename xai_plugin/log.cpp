@@ -48,6 +48,11 @@ void log_data(const void *buffer, int bufsize)
 	}
 }
 
+int sprintf_(char *str, const char *format, int v1)
+{
+	return vsh_sprintf(str, format, v1);
+}
+
 int sprintf_(char *str, const char *format, int v1, int v2)
 {
 	return vsh_sprintf(str, format, v1, v2);
@@ -250,24 +255,4 @@ void notify(char *param)
 
 	(void*&)(vshtask_A02D46E7) = (void*)((int)getNIDfunc("vshtask", 0xA02D46E7)); // notification message func
 	vshtask_A02D46E7(0, param);
-}
-
-
-void dump_file(const char *path, void *buffer, int size)
-{
-	CellFsErrno err;
-	int fd;
-	uint64_t nrw;
-					
-	if(cellFsOpen(path, CELL_FS_O_RDWR | CELL_FS_O_CREAT, &fd, NULL, 0) != CELL_OK)	
-		notify("unable to open.");	
-	else
-	{
-		if(cellFsWrite(fd, buffer, size, &nrw) != CELL_OK)		
-			notify("unable to write.");		
-		else		
-			notify("data written.");		
-	}
-
-	err = cellFsClose(fd);
 }
