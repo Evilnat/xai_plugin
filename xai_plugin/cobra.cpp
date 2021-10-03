@@ -39,9 +39,7 @@ int sys_get_version(uint32_t *version)
 
 int sys_get_version2(uint16_t *version)
 {
-    system_call_2(8, SYSCALL8_OPCODE_GET_VERSION2, (uint32_t)version);
-	//system_call_3(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_GET_COBRA_VERSION, (uint32_t)version);  	
-	
+    system_call_2(8, SYSCALL8_OPCODE_GET_VERSION2, (uint32_t)version); 	
     return_to_user_prog(uint16_t);
 }
 

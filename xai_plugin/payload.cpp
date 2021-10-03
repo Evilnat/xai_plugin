@@ -4,7 +4,6 @@
 */
 
 #include "payload.h"
-#include "payloads.h"
 #include "log.h"
 #include "functions.h"
 
@@ -14,10 +13,9 @@ unsigned char payload[payload_size];
 int install_payload(void) 
 {
 	uint32_t firmware;
-	check_firmware(&firmware);
+	lv2_get_platform_info(&firmware);
 
-	uint64_t kernel;
-	check_kernel(&kernel);
+	int kernel = check_kernel();	
 
 	if(firmware > 0x4080 && kernel == 1)	
 		memcpy(payload, payload_481C_488C, payload_size);
@@ -29,11 +27,11 @@ int install_payload(void)
 
 	lv2_copy_from_user(payload, PAYLOAD_OFFSET, payload_size);
 
-	pokeq(PAYLOAD_OPD_OFFSET + 0, PAYLOAD_OFFSET);
-	pokeq(PAYLOAD_OPD_OFFSET + 8, TOC_OFFSET);
+	pokeq(OPD_OFFSET + 0, PAYLOAD_OFFSET);
+	pokeq(OPD_OFFSET + 8, TOC_OFFSET);
 
 	real_opd_offset = SYSCALL_OPD_OFFSET(SYSCALL_RUN_PAYLOAD);
-	pokeq(SYSCALL_OPD_PTR_OFFSET(SYSCALL_RUN_PAYLOAD), PAYLOAD_OPD_OFFSET);
+	pokeq(SYSCALL_OPD_PTR_OFFSET(SYSCALL_RUN_PAYLOAD), OPD_OFFSET);
 
 	return 0;
 }

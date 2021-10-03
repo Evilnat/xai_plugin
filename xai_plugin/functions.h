@@ -3,14 +3,11 @@
 
 #include <stdio.h>
 
-#define SYS_SHUTDOWN		0x0100
-#define SYS_SHUTDOWN2		0x1100
-#define SYS_SOFT_REBOOT 	0x0200
-#define SYS_HARD_REBOOT		0x1200
-#define SYS_LV2_REBOOT		0x8201
-
-#define SIGNIN_RCO_LOCK			"/dev_flash/vsh/resource/npsignin_plugin.lck"
-#define SIGNIN_RCO_UNLOCK		"/dev_flash/vsh/resource/npsignin_plugin.rco"
+#define SYS_SHUTDOWN			0x0100
+#define SYS_SHUTDOWN2			0x1100
+#define SYS_SOFT_REBOOT 		0x0200
+#define SYS_HARD_REBOOT			0x1200
+#define SYS_LV2_REBOOT			0x8201
 
 typedef struct
 {
@@ -66,9 +63,7 @@ void xmb_reboot(uint16_t op);
 uint32_t GetApplicableVersion(void *data);
 
 void wait(int sleep_time);
-int check_cobra();
 
-int check_cobra_and_syscall();
 int get_cobra_fw_version();
 
 int sys_ss_get_console_id(void *idps);
@@ -76,8 +71,9 @@ int sys_ss_get_open_psid(void *psid);
 
 int sys_sm_control_led(uint8_t led_id,uint8_t led_action);
 
-uint8_t check_firmware(uint32_t *version);
-uint64_t check_kernel(uint64_t *type);
+uint8_t lv2_get_platform_info(uint32_t *version);
+int check_kernel();
+int check_firmware();
 
 int check_syscalls();
 

@@ -10,6 +10,7 @@
 #include "cobra.h"
 #include "gccpch.h"
 #include "functions.h"
+#include "rebug.h"
 
 SYS_MODULE_INFO(xai_plugin, 0, 1, 1);
 SYS_MODULE_START(_xai_plugin_prx_entry);
@@ -150,6 +151,8 @@ void xai_plugin_interface::xai_plugin_exit(void)
 
 static void plugin_thread(uint64_t arg)
 {
+	check_firmware();
+
 	// Shutdown options
 	if(strcmp(action_thread, "shutdown_action") == 0)	
 		xmb_reboot(SYS_SHUTDOWN);	
@@ -383,6 +386,40 @@ static void plugin_thread(uint64_t arg)
 	else if(strcmp(action_thread, "button_assignment") == 0)
 		button_assignment();
 
+	// Rebug options	
+	else if(strcmp(action_thread, "normal_mode") == 0)	
+	{
+		if(normal_mode() == CELL_OK)
+		{
+			ShowMessage("msg_normal_mode", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			wait(2);
+			xmb_reboot(SYS_SOFT_REBOOT);
+		}
+	}
+	else if(strcmp(action_thread, "rebug_mode") == 0)	
+	{
+		if(rebug_mode() == CELL_OK)
+		{
+			ShowMessage("msg_rebug_mode", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			wait(2);
+			xmb_reboot(SYS_SOFT_REBOOT);
+		}
+	}
+	else if(strcmp(action_thread, "debugsettings_mode") == 0)		
+		debugsettings_mode();	
+	else if(strcmp(action_thread, "xmb_mode") == 0)	
+	{
+		if(toggle_xmb_mode() == CELL_OK)
+		{
+			wait(2);
+			xmb_reboot(SYS_SOFT_REBOOT);
+		}
+	}
+	/*else if(strcmp(action_thread, "download_toolbox") == 0)	
+		download_toolbox();*/
+	/*else if(strcmp(action_thread, "install_toolbox") == 0)	
+		install_toolbox();*/
+
 	// Advanced Tools options
 	else if(strcmp(action_thread, "rsod_fix") == 0)
 	{		
@@ -429,7 +466,7 @@ static void plugin_thread(uint64_t arg)
 	else if(strcmp(action_thread, "rebuild_db") == 0)
 		rebuild_db();
 	else if(strcmp(action_thread, "recovery_mode") == 0)
-		recovery_mode();
+		recovery_mode();	
 			
 	// Unused options
 	else if(strcmp(action_thread, "enable_screenshot") == 0)			

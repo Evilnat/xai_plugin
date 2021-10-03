@@ -7,6 +7,7 @@
 #include "hvcall.h"
 #include "util.h"
 #include "functions.h"
+#include "log.h"
 
 int mm_insert_htab_entry(uint64_t va_address, uint64_t lpar_address, uint64_t protection, uint64_t* index) 
 {
@@ -79,11 +80,14 @@ int patch_htab_entries(uint64_t vas_id)
 	const uint64_t num_hpte_groups = 128;
 	uint64_t hpte_group;
 
-	for (hpte_group = 0; hpte_group < num_hpte_groups; ++hpte_group) 
+	for(hpte_group = 0; hpte_group < num_hpte_groups; ++hpte_group) 
 	{
+		log("R1\n");
 		result = patch_htab_group_entry(vas_id, hpte_group, 0);
 		if (result != 0)
 			goto error;
+
+		log("R2\n");
 	}
 
 	result = 0;

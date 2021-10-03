@@ -6,15 +6,6 @@
 #define STAGE2_BIN_RELEASE		"/dev_blind/sys/stage2.bin.release"
 #define STAGE2_BIN_DEBUG		"/dev_blind/sys/stage2.bin.debug"
 
-#define STAGE2_CEX_ENABLED		"/dev_blind/rebug/stage2.cex"
-#define STAGE2_CEX_DISABLED		"/dev_blind/rebug/stage2.cex.bak"
-#define STAGE2_CEX_RELEASE		"/dev_blind/rebug/stage2.cex.release"
-#define STAGE2_CEX_DEBUG  		"/dev_blind/rebug/stage2.cex.debug"
-#define STAGE2_DEX_ENABLED		"/dev_blind/rebug/stage2.dex"
-#define STAGE2_DEX_DISABLED		"/dev_blind/rebug/stage2.dex.bak"
-#define STAGE2_DEX_RELEASE		"/dev_blind/rebug/stage2.dex.release"
-#define STAGE2_DEX_DEBUG  		"/dev_blind/rebug/stage2.dex.debug"
-
 #define RCO_DATE				"/dev_blind/vsh/resource/explore_plugin_full.rco.date"
 #define RCO_ORI					"/dev_blind/vsh/resource/explore_plugin_full.rco.ori"
 #define RCO_TEMP				"/dev_blind/vsh/resource/explore_plugin_full.rco.tmp"
@@ -37,11 +28,8 @@
 #define EXPLORE_PLUGIN			"explore_plugin"
 #define XAI_PLUGIN				"xai_plugin"
 
-#define LV2					0
-#define LV1					1
-
-#define SYSCALL_TABLE	0x8000000000363BE0ULL
-#define DISABLED		0xFFFFFFFF80010003ULL
+#define LV2				0
+#define LV1				1
 
 #define PRODUCT_MODE_FLAG_OFFSET	0x48C07
 #define RECOVERY_MODE_FLAG_OFFSET	0x48C61
@@ -198,5 +186,12 @@ void applicable_version();
 void activate_account();
 
 void enable_WhatsNew();
+
+void searchDirectory(char *pDirectoryPath, char *fileformat, char *fileout);
+void installPKG(char *path);
+void downloadPKG(wchar_t *url);
+
+int cellFsUtilUnMount(const char *device_path, int r4);
+int cellFsUtilMount(const char *device_name, const char *device_fs, const char *device_path, int r6, int write_prot, int r8, int *r9);
 
 #endif /* _CFW_SETTINGS_H */

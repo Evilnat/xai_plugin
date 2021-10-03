@@ -15,6 +15,8 @@
 #include "gccpch.h"
 #include "des.h"
 #include "erk.h"
+#include "rebug.h"
+#include "common.h"
 
 extern "C" int _videorec_export_function_video_rec(void);
 extern "C" int _videorec_export_function_klicensee(void);
@@ -662,7 +664,7 @@ int create_syscalls()
 	CellFsStat stat;
 	system_call_2(808, (uint64_t)"/dev_flash/vsh/module/software_update_plugin.sprx", (uint64_t)&stat);
 
-	if(peekq(SYSCALL_TABLE) != DISABLED)
+	if(peekq(SYSCALL_TABLE_OFFSET) != DISABLED)
 		ShowMessage("msg_create_syscalls_ok", (char *)XAI_PLUGIN, (char*)TEX_SUCCESS);
 	else
 		ShowMessage("msg_create_syscalls_error", (char *)XAI_PLUGIN, (char*)TEX_ERROR);
@@ -683,7 +685,7 @@ int dump_lv(int lv)
 	uint64_t nrw, seek, offset_dumped;
 	CellFsStat st;	
 
-	if(peekq(SYSCALL_TABLE) == DISABLED)
+	if(peekq(SYSCALL_TABLE_OFFSET) == DISABLED)
 	{
 		ShowMessage("msg_cfw_syscalls_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 		return 1;
@@ -788,10 +790,9 @@ int dump_lv(int lv)
 int dumpERK()
 {
 	uint32_t firmware;
-	check_firmware(&firmware);
+	lv2_get_platform_info(&firmware);
 
-	uint64_t kernel;
-	check_kernel(&kernel);
+	int kernel = check_kernel();	
 
 	if(firmware < 0x4080 && kernel == 1 || firmware < 0x4080 && kernel == 2)
 	{
@@ -799,7 +800,7 @@ int dumpERK()
 		return -1;
 	}
 
-	if(peekq(SYSCALL_TABLE) == DISABLED)
+	if(peekq(SYSCALL_TABLE_OFFSET) == DISABLED)
 	{
 		ShowMessage("msg_cfw_syscalls_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 		return -1;
@@ -822,13 +823,13 @@ int removeSysHistory()
 		1022, 204, 203, 202, 201, 200, 9, 10, 11, 15, 20, 35, 36, 38, 6, 8, 7
 	};
 
-	if(peekq(SYSCALL_TABLE) == DISABLED)
+	if(peekq(SYSCALL_TABLE_OFFSET) == DISABLED)
 	{
 		ShowMessage("msg_syscalls_already_disabled", (char *)XAI_PLUGIN, (char *)TEX_WARNING);
 		return 1;
 	}
 
-	uint64_t syscall_not_impl = peekq(SYSCALL_TABLE);
+	uint64_t syscall_not_impl = peekq(SYSCALL_TABLE_OFFSET);
 
 	if(check_cobra_version())
 	{
@@ -841,9 +842,9 @@ int removeSysHistory()
 
 	// Normal (17 syscalls)
 	for(uint8_t i = 0; i < 17; i++)
-		pokeq(SYSCALL_TABLE + 8 * syscalls[i], syscall_not_impl);
+		pokeq(SYSCALL_TABLE_OFFSET + 8 * syscalls[i], syscall_not_impl);
 
-	if(peekq(SYSCALL_TABLE) != DISABLED)
+	if(peekq(SYSCALL_TABLE_OFFSET) != DISABLED)
 	{
 		ShowMessage("msg_syscalls_disabling_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
         return 1;
@@ -1560,7 +1561,7 @@ void toggle_dlna()
 		explore_interface->DoUnk6("reload_category photo", 0, 0);
 		explore_interface->DoUnk6("reload_category music", 0, 0);
 		explore_interface->DoUnk6("reload_category video", 0, 0);
-		ShowMessage((dlna == 1) ? "msg_dlna_enabled" : "msg_dlna_disabled", (char*)XAI_PLUGIN, (dlna == 1) ? (char*)TEX_SUCCESS : (char*)TEX_ERROR);
+		ShowMessage((dlna == 1) ? "msg_dlna_enabled" : "msg_dlna_disabled", (char*)XAI_PLUGIN, (dlna == 1) ? (char*)TEX_SUCCESS : (char*)TEX_SUCCESS);
 	}
 }
 
@@ -1573,7 +1574,7 @@ bool enable_hvdbg()
 		if(lv1_peek(offset) == 0x2B800003419D02B4ULL)
 		{
 			log("Found lv1 code @0x%x\n", (int)offset);
-			lv1_poke(offset,0x2B8000032B800003ULL);
+			lv1_poke(offset, 0x2B8000032B800003ULL);
 			break;			
 		}
 	}
@@ -1584,7 +1585,7 @@ bool enable_hvdbg()
 		if(lv1_peek(offset) == 0x2B800003419D0054ULL)
 		{
 			log("Found lv1 code @0x%x\n", (int)offset);
-			lv1_poke(offset,0x2B8000032B800003ULL);
+			lv1_poke(offset, 0x2B8000032B800003ULL);
 			break;			
 		}
 	}
@@ -1774,7 +1775,7 @@ void usb_firm_loader()
 		{
 			log("Found dev_usb @: %08x", (int)(Current >> 32)); 
 			log("%08x\n", (int)Current);
-			pokeq(Current,dev_flash);
+			pokeq(Current, dev_flash);
 			Current = Stop;
 		}
 	}
@@ -1829,7 +1830,7 @@ bool patch_laidpaid_sserver2()
 			if(lv1_peek(offset + 8) == 0x3860000548000010ULL)
 			{
 				log("Found lv1 code @0x%x\n", (int)offset);
-				lv1_poke(offset+8,0x3860000048000010ULL);
+				lv1_poke(offset + 8, 0x3860000048000010ULL);
 				return true;
 			}
 		}
@@ -2687,16 +2688,13 @@ int filecopy(const char *src, const char *dst)
 	{
 		cellFsChmod(src, 0666);		
 
-		//cellFsUtilMount("CELL_FS_IOS:BUILTIN_FLSH1", "CELL_FS_FAT", "/dev_blind", 0, 0, 0, 0);
-
 		if(cellFsOpen(src, CELL_FS_O_RDONLY, &fd_src, 0, 0) != CELL_FS_SUCCEEDED || cellFsOpen(dst, CELL_FS_O_CREAT | CELL_FS_O_TRUNC | CELL_FS_O_RDWR, &fd_dst, 0, 0) != CELL_FS_SUCCEEDED)
 		{
 			cellFsClose(fd_src);
-			//log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount("/dev_blind", 0));
 			return 1;
 		}	
 
-		while((ret = cellFsRead(fd_src, buffer, 0x1000, &nread)) == CELL_FS_SUCCEEDED)
+		while(cellFsRead(fd_src, buffer, 0x1000, &nread) == CELL_FS_SUCCEEDED)
 		{
 			if((int)nread)
 			{
@@ -2706,7 +2704,6 @@ int filecopy(const char *src, const char *dst)
 				{
 					cellFsClose(fd_src);
 					cellFsClose(fd_dst);
-					//log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount("/dev_blind", 0));
 					return 1;
 				}
 
@@ -2723,7 +2720,6 @@ int filecopy(const char *src, const char *dst)
 	
 	cellFsClose(fd_src);
 	cellFsClose(fd_dst);
-	//log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount("/dev_blind", 0));
 
 	return 0;
 }
@@ -2760,11 +2756,28 @@ int loadKernel()
 {
 	int ret = 1;
 	CellFsStat stat;
+	uint32_t block_size;
+	uint64_t block_count;
 
 	cellFsUtilMount("CELL_FS_IOS:BUILTIN_FLSH1", "CELL_FS_FAT", "/dev_blind", 0, 0, 0, 0);	
+	cellFsAioInit("/dev_blind");
 
-	if(filecopy("/dev_usb000/lv2_kernel.self", "/dev_blind/lv2_kernel.self") == CELL_FS_SUCCEEDED)
-		patch_lv1();
+	if(cellFsStat("/dev_usb000/lv2_kernel.self", &stat) == CELL_FS_SUCCEEDED)
+	{
+		cellFsUnlink("/dev_blind/lv2_kernel.self");
+
+		cellFsGetFreeSize("/dev_blind/", &block_size, &block_count);
+
+		if(((uint64_t)block_size * block_count) < stat.st_size + 2048)
+		{
+			cellFsUtilUnMount("/dev_blind", 0);
+			ShowMessage("msg_flash_enough_space", (char *)XAI_PLUGIN, (char *)TEX_ERROR);				
+			return 0;
+		}
+
+		if(filecopy("/dev_usb000/lv2_kernel.self", "/dev_blind/lv2_kernel.self") == CELL_FS_SUCCEEDED)
+			patch_lv1();
+	}	
 	else if(cellFsStat("/dev_flash/lv2_kernel.self", &stat) == CELL_FS_SUCCEEDED)
 		patch_lv1();	
 
@@ -2904,7 +2917,7 @@ void download_thread(int id)
 	download_interface->DoUnk5(0, url_path, L"/dev_hdd0"); 	
 }
 
-static void downloadPKG(wchar_t *url)
+void downloadPKG(wchar_t *url)
 {	
 	wchar_t *url_path = url;
 	LoadPlugin("download_plugin", (void*)download_thread);			

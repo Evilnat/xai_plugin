@@ -7,6 +7,10 @@
 #include "cobra.h"
 #include "log.h"
 #include "cfw_settings.h"
+#include "common.h"
+
+uint64_t TOC_OFFSET = 0;
+uint64_t SYSCALL_TABLE_OFFSET = 0;
 
 int mount_dev_blind()
 {
@@ -166,27 +170,6 @@ void wait(int sleep_time)
 	sys_timer_sleep(sleep_time);	
 }
 
-int check_cobra()
-{
-	CellFsStat statinfo;
-
-	int ret = cellFsStat("/dev_flash/sys/stage2.bin", &statinfo);
-	return ret;
-}
-
-int check_cobra_and_syscall()
-{
-	uint16_t cobra_version = check_cobra_version();
-
-	if(check_syscall8() != 0 || cobra_version == 0)
-	{
-		ShowMessage("msg_cobra_not_supported", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
-		return 1;
-	}
-
-	return 0;
-}
-
 int get_cobra_fw_version()
 {
 	system_call_2(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_GET_FW_VERSION);
@@ -211,22 +194,47 @@ int sys_sm_control_led(uint8_t led_id,uint8_t led_action)
 	return_to_user_prog(int);
 }
 
-uint8_t check_firmware(uint32_t *version)
+uint8_t lv2_get_platform_info(uint32_t *version)
 {
     system_call_1(387, (uint32_t)version);
 	*version = *version >> 12;
 	return_to_user_prog(int);
 }
 
-uint64_t check_kernel(uint64_t *type)
+int check_kernel()
 {
-	system_call_1(985, (uint32_t)type);
-	return_to_user_prog(int);
+	int type;
+
+	if(peekq32(CEX_OFFSET) == CEX)
+		type = 1;
+	else if(peekq32(DEX_OFFSET) == DEX)
+		type = 2;
+
+	return type;
+}
+
+int check_firmware()
+{
+	uint32_t firmware;
+	lv2_get_platform_info(&firmware);
+
+	int kernel = check_kernel();	
+
+	// For 4.81 CEX - 4.88 CEX
+	TOC_OFFSET = TOC_OFFSET_CEX;
+	SYSCALL_TABLE_OFFSET = SYSCALL_TABLE_OFFSET_CEX;
+
+	// For 4.84 DEX/DREX
+	if(firmware == 0x4084 && kernel == 2)	
+	{
+		TOC_OFFSET = TOC_OFFSET_DEX;
+		SYSCALL_TABLE_OFFSET = SYSCALL_TABLE_OFFSET_DEX;
+	}
 }
 
 int check_syscalls()
 {
-	if(peekq(SYSCALL_TABLE) == DISABLED)
+	if(peekq(SYSCALL_TABLE_OFFSET) == DISABLED)
 		return 0;
 	
 	return 1;

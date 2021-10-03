@@ -74,6 +74,7 @@
     <ClCompile Include="mm.cpp" />
     <ClCompile Include="payload.cpp" />
     <ClCompile Include="prx.cpp" />
+    <ClCompile Include="rebug.cpp" />
     <ClCompile Include="util.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -92,14 +93,12 @@
     <ClInclude Include="mm.h" />
     <ClInclude Include="payload.h" />
     <ClInclude Include="ps3_savedata_plugin.h" />
+    <ClInclude Include="rebug.h" />
     <ClInclude Include="recording_settings.h" />
     <ClInclude Include="util.h" />
     <ClInclude Include="x3.h" />
     <ClInclude Include="xmb_plugin.h" />
     <ClInclude Include="xRegistry.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="payloads.h" />
   </ItemGroup>
   <Import Condition="'$(ConfigurationType)' == 'Makefile' and Exists('$(VCTargetsPath)\Platforms\$(Platform)\SCE.Makefile.$(Platform).targets')" Project="$(VCTargetsPath)\Platforms\$(Platform)\SCE.Makefile.$(Platform).targets" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
