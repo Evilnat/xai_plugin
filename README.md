@@ -1,5 +1,5 @@
 # xai_plugin
-XAI Plugin - Original Source by mysis [https://www.psx-place.com/threads/custom-xai_plugin-source.12455/]
+[XAI Plugin - Original Source by mysis](https://www.psx-place.com/threads/custom-xai_plugin-source.12455/)
 
 Remember that videorec.sprx and xai_plugin.sprx must be signed after compiled
 
