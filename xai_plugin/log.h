@@ -20,6 +20,11 @@ int swprintf_(wchar_t *str, size_t size, const wchar_t *format, int v1);
 int swprintf_(wchar_t *str, size_t size, const wchar_t *format, int v1, int v2);
 int swprintf_(wchar_t *str, size_t size, const wchar_t *format, int v1, int v2, int v3);
 int swprintf_(wchar_t *str, size_t size, const wchar_t *format, int v1, int v2, int v3, int v4);
+int swprintf_(wchar_t *str, size_t size, const wchar_t *format, int v1, int v2, int v3, int v4, int v5);
+int swprintf_(wchar_t *str, size_t size, const wchar_t *format, int v1, int v2, int v3, int v4, int v5, int v6);
+int swprintf_(wchar_t *str, size_t size, const wchar_t *format, int v1, int v2, int v3, int v4, int v5, int v6, int v7);
+int swprintf_(wchar_t *str, size_t size, const wchar_t *format, int v1, int v2, int v3, int v4, int v5, int v6, int v7, int v8);
+int swprintf_(wchar_t *str, size_t size, const wchar_t *format, int v1, int v2, int v3, int v4, int v5, int v6, int v7, int v8, int v9);
 
 void log(wchar_t *buffer);
 void log(char *buffer);

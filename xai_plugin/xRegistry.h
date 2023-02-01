@@ -70,6 +70,41 @@ class xsetting_CC56EB2D_class
 		int SetRegistryFocusMask(int value) {int v; SetRegistryValue(GetCurrentUserNumber(), 0x8D, value);}
 };
 
+class xsetting_F48C0548_class
+{
+	public:
+		int32_t (*SetSettingNet_enable)(uint32_t);
+		int32_t (*GetSettingNet_enable)(uint32_t *);
+		int32_t (*SetSettingNet_device)(uint32_t);
+		int32_t (*GetSettingNet_device)(uint32_t *);
+		int32_t (*SetSettingNet_apAutoConfig)(uint32_t);
+		int32_t (*GetSettingNet_apAutoConfig)(uint32_t *);
+		int32_t (*SetSettingNet_eapMd5)(uint32_t);
+		int32_t (*GetSettingNet_eapMd5)(uint32_t *);
+		int32_t (*SetSettingNet_howToSetupIp)(uint32_t);
+		int32_t (*GetSettingNet_howToSetupIp)(uint32_t *);
+		int32_t (*SetSettingNet_ipAddress)(char address[0x10]);
+		int32_t (*GetSettingNet_ipAddress)(char address[0x10]);
+		int32_t (*SetSettingNet_netmask)(char address[0x10]);
+		int32_t (*GetSettingNet_netmask)(char address[0x10]);
+		int32_t (*SetSettingNet_defaultRoute)(char address[0x10]);
+		int32_t (*GetSettingNet_defaultRoute)(char address[0x10]);
+		int32_t (*SetSettingNet_dnsFlag)(uint32_t);
+		int32_t (*GetSettingNet_dnsFlag)(uint32_t *);
+		int32_t (*SetSettingNet_primaryDns)(char address[0x10]);
+		int32_t (*GetSettingNet_primaryDns)(char address[0x10]);
+		int32_t (*SetSettingNet_secondaryDns)(char address[0x10]);
+		int32_t (*GetSettingNet_secondaryDns)(char address[0x10]);
+		int32_t (*SetSettingNet_httpProxyFlag)(uint32_t);
+		int32_t (*GetSettingNet_httpProxyFlag)(uint32_t *);
+		int32_t (*SetSettingNet_httpProxyServer)(void *);
+		int32_t (*GetSettingNet_httpProxyServer)(void *);
+		int32_t (*SetSettingNet_httpProxyPort)(int16_t);
+		int32_t (*GetSettingNet_httpProxyPort)(int16_t *);
+		int32_t (*SetSettingNet_upnpFlag)(int32_t);
+		int32_t (*GetSettingNet_upnpFlag)(int32_t *);
+};
+
 class xsetting_D0261D72_class
 {
 	public:

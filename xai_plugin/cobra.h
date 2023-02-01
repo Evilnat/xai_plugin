@@ -5,6 +5,9 @@
 #include <string.h>
 #include "cobra.h"
 
+#define PLUGINS_TXT_FILE_ENABLED	"/dev_hdd0/boot_plugins.txt"
+#define PLUGINS_TXT_FILE_DISABLED	"/dev_hdd0/boot_plugins.txt.bak"
+
 #define FAN_DISABLED	0
 #define FAN_SYSCON		1
 #define DYNAMIC_FAN_60	2
@@ -153,16 +156,7 @@
 
 #define PS3MAPI_OPCODE_RING_BUZZER 						0x2245
 
-#define PS3MAPI_OPCODE_CONVERT_SAVEDATA 				0x2246
-
-#define PS3MAPI_OPCODE_SET_FAKE_ACCOUNTID 				0x2247
-
-#define PS3MAPI_OPCODE_ACTIVATE_ACOUNT 	 				0x2248
-
 #define PS3MAPI_OPCODE_CREATE_RIF 		 				0x2249
-
-#define PS3MAPI_OPCODE_CHECK_QA 						0x2242
-#define PS3MAPI_OPCODE_SET_QA 							0x2243
 
 #define SYSCALL8_OPCODE_STEALTH_TEST					0x3993
 #define SYSCALL8_OPCODE_STEALTH_ACTIVATE    			0x3995
@@ -193,6 +187,7 @@ typedef struct
 } __attribute__((packed)) CobraConfig;
 
 int check_syscall8();
+int check_cobra_version();
 
 int cobra_read_config(CobraConfig *cfg);
 int cobra_write_config(CobraConfig *cfg);
@@ -200,7 +195,10 @@ int cobra_write_config(CobraConfig *cfg);
 int sys_get_version(uint32_t *version);
 int sys_get_version2(uint16_t *version);
 
-int check_cobra_version();
+void toggle_plugins();
+
+int cobra_load_vsh_plugin(int slot, char *path, void *arg, uint32_t arg_size);
+int cobra_unload_vsh_plugin(int slot);
 
 #endif /* _COBRA_H */
 

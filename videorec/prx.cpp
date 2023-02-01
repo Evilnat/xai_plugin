@@ -349,18 +349,15 @@ int GetItemFromMetaList_hook_Mini(int metalist,int item, char * objectfield, int
 
 #define PSPREMOTEPLAYV1 1
 #define PSPREMOTEPLAYV2 4
-#define VITAREMOTEPLAY	0x80
-#define SYSTEMBGM		0x20
-
+#define VITAREMOTEPLAY 0x80
+#define SYSTEMBGM 0x20
 int sys_game_get_system_sw_version() 
 {
 	system_call_0(376);
 	return_to_user_prog(int);
 }
-
 #define swap(x) ((((x) & 0xFF000000) >> 24) | (((x) & 0x00FF0000) >> 8) | (((x) & 0x0000FF00) << 8) | (((x) & 0x000000FF) << 24))
 #define swap16(x) ((((x) & 0xFF00) >> 8) | (((x) << 8) & 0x00FF))
-
 void override_sfo(void * buf)
 {
 	sfo_hdr * hdr = (sfo_hdr*)buf;	
@@ -477,12 +474,14 @@ extern "C" int _videorec_export_function_sfoverride(void)
 	}
 }
 
+
+
+
 void notify(char * param)
 {
 	log(param);	log("\n");	
 	vshtask_A02D46E7(0, param);
 }
-
 void notify(const char * format, int param1)
 {
 	char tmp[0x100];

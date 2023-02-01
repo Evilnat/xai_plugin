@@ -11,6 +11,10 @@
 #include "gccpch.h"
 #include "functions.h"
 #include "rebug.h"
+#include "qa.h"
+#include "savegames.h"
+#include "cex2dex.h"
+#include "eeprom.h"
 
 SYS_MODULE_INFO(xai_plugin, 0, 1, 1);
 SYS_MODULE_START(_xai_plugin_prx_entry);
@@ -27,13 +31,13 @@ xmb_plugin_mod0 * mod0_interface;
 sys_ppu_thread_t thread_id = 0;
 const char * action_thread;
 
-int LoadPlugin(char * pluginname, void * handler)
+int LoadPlugin(char *pluginname, void *handler)
 {
 	log_function("xai_plugin", "1", __FUNCTION__, "(%s)\n", pluginname);
 	return xmm0_interface->LoadPlugin3(xmm0_interface->GetPluginIdByName(pluginname), handler, 0); 
 }
 
-int GetPluginInterface(const char * pluginname, int interface_)
+int GetPluginInterface(const char *pluginname, int interface_)
 {
 	return plugin_GetInterface(FindPlugin(pluginname), interface_);
 }
@@ -74,13 +78,14 @@ void * getNIDfunc(const char * vsh_module, uint32_t fnid)
 
 int load_functions()
 {	
-	(void*&)(FindPlugin) = (void*)((int)getNIDfunc("paf", 0xF21655F3));
-	(void*&)(plugin_GetInterface) = (void*)((int)getNIDfunc("paf", 0x23AFB290));
-	(void*&)(plugin_SetInterface) = (void*)((int)getNIDfunc("paf", 0xA1DC401));
-	(void*&)(plugin_SetInterface2) = (void*)((int)getNIDfunc("paf", 0x3F7CB0BF));
+	setNIDfunc(FindPlugin, "paf", 0xF21655F3);
+	setNIDfunc(plugin_GetInterface, "paf", 0x23AFB290);
+	setNIDfunc(plugin_SetInterface, "paf", 0xA1DC401);
+	setNIDfunc(plugin_SetInterface2, "paf", 0x3F7CB0BF);
 
 	load_log_functions();
 	load_cfw_functions();
+	load_saves_functions();
 	
 	xmm0_interface = (xmb_plugin_xmm0 *)GetPluginInterface("xmb_plugin", 'XMM0');
 	xmb2_interface = (xmb_plugin_xmb2 *)GetPluginInterface("xmb_plugin", 'XMB2');
@@ -151,8 +156,6 @@ void xai_plugin_interface::xai_plugin_exit(void)
 
 static void plugin_thread(uint64_t arg)
 {
-	check_firmware();
-
 	// Shutdown options
 	if(strcmp(action_thread, "shutdown_action") == 0)	
 		xmb_reboot(SYS_SHUTDOWN);	
@@ -163,41 +166,76 @@ static void plugin_thread(uint64_t arg)
 	else if(strcmp(action_thread, "lv2_reboot_action") == 0)	
 		xmb_reboot(SYS_LV2_REBOOT);
 
-	// Cobra options		
-	else if(strcmp(action_thread, "disable_syscalls") == 0)	
-		removeSysHistory();		
-	else if(strcmp(action_thread, "patch_savedata") == 0)	
-		patch_savedata();		
+	// Cobra options	
 	else if(strcmp(action_thread, "cobra_info") == 0)	
 		show_cobra_info();
 	else if(strcmp(action_thread, "check_syscall8") == 0)	
-		checkSyscall(SC_COBRA_SYSCALL8);	
-	else if(strcmp(action_thread, "activate_account") == 0)	
-		activate_account();
+		checkSyscall(SC_COBRA_SYSCALL8);		
 	else if(strcmp(action_thread, "create_rif_license") == 0)	
-		create_rifs();	
-	else if(strcmp(action_thread, "set_accountid") == 0)
-		changeAccountID(false);
-	else if(strcmp(action_thread, "set_accountid_overwrite") == 0)
-		changeAccountID(true);
+		create_rifs();		
 	else if(strcmp(action_thread, "create_syscalls") == 0)	
 		create_syscalls();
+	else if(strcmp(action_thread, "enable_ftp") == 0)
+		load_ftp();
+	else if(strcmp(action_thread, "disable_ftp") == 0)
+		unload_ftp();
 	else if(strcmp(action_thread, "allow_restore_sc") == 0)	
-		allow_restore_sc();
+		allow_restore_sc();	
 	else if(strcmp(action_thread, "skip_existing_rif") == 0)	
 		skip_existing_rif();	
-	else if(strcmp(action_thread, "enable_whatsnew") == 0)	
-		enable_WhatsNew();
+	/*else if(strcmp(action_thread, "enable_whatsnew") == 0)	
+		enable_WhatsNew();*/
 	else if(strcmp(action_thread, "cobra_version") == 0)
 	{		
 		if(toggle_cobra_version() == CELL_OK)
+		{
+			wait(2);
 			xmb_reboot(SYS_HARD_REBOOT);
+		}
 	}
 	else if(strcmp(action_thread, "cobra_mode") == 0)
 	{
 		if(toggle_cobra() == CELL_OK)
+		{
+			wait(2);
 			xmb_reboot(SYS_HARD_REBOOT);
+		}
 	}
+	else if(strcmp(action_thread, "toggle_plugins") == 0)
+		toggle_plugins();
+	else if(strcmp(action_thread, "enable_npsignin_lck") == 0)	
+		enable_npsignin_lck();
+	else if(strcmp(action_thread, "disable_npsignin_lck") == 0)	
+		disable_npsignin_lck();
+	/*else if(strcmp(action_thread, "toggle_ext_cobra") == 0)
+		toggle_ext_cobra();*/
+
+
+	// PSN Tools
+	else if(strcmp(action_thread, "disable_syscalls") == 0)	
+		removeSysHistory();		
+	else if(strcmp(action_thread, "spoof_targetid") == 0)	
+		spoof_with_eid5();	
+	else if(strcmp(action_thread, "spoof_idps") == 0)	
+		spoof_idps();
+	else if(strcmp(action_thread, "spoof_psid") == 0)	
+		spoof_psid();
+	else if(strcmp(action_thread, "show_accountid") == 0)
+		getAccountID();		
+	else if(strcmp(action_thread, "set_accountid") == 0)
+		changeAccountID(WRITE, 0);
+	else if(strcmp(action_thread, "set_accountid_overwrite") == 0)
+		changeAccountID(WRITE, 1);
+	else if(strcmp(action_thread, "remove_accountid") == 0)
+		changeAccountID(EMPTY, 1);
+	else if(strcmp(action_thread, "activate_account") == 0)	
+		activate_account();	
+	else if(strcmp(action_thread, "backup_license") == 0)
+		backup_license();
+	else if(strcmp(action_thread, "remove_license") == 0)
+		remove_license();
+	else if(strcmp(action_thread, "patch_savedata") == 0)	
+		patch_savedata();	
 
 	// Fan Modes
 	else if(strcmp(action_thread, "fan_mode_disabled") == 0)	
@@ -342,15 +380,23 @@ static void plugin_thread(uint64_t arg)
 			ShowMessage("msg_cobra_fan_ps2mode_90", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 
-	// Basic options
+	// Basic options	
+	else if(strcmp(action_thread, "ps3_lifetime") == 0)	
+		getPS3Lifetime();
 	else if(strcmp(action_thread, "fan_speed") == 0)	
 		fan_speed();
-	else if(strcmp(action_thread, "show_temp") == 0)	
-		check_temp();	
+	else if(strcmp(action_thread, "show_temp_celsius") == 0)	
+		check_temp(0);
+	else if(strcmp(action_thread, "show_temp_fahrenheit") == 0)	
+		check_temp(1);
 	else if(strcmp(action_thread, "show_idps") == 0)	
-		show_idps();
+		show_idps();			
 	else if(strcmp(action_thread, "show_psid") == 0)	
 		show_psid();
+	else if(strcmp(action_thread, "show_ip") == 0)	
+		show_ip();
+	else if(strcmp(action_thread, "show_clocks") == 0)	
+		getClockSpeeds();
 	else if(strcmp(action_thread, "toggle_coldboot") == 0)
 	{
 		CellFsStat statinfo;
@@ -358,36 +404,94 @@ static void plugin_thread(uint64_t arg)
 		if(toggle_coldboot() == CELL_OK)
 			ShowMessage((cellFsStat("/dev_flash/vsh/resource/coldboot.raf.ori", &statinfo) == CELL_OK) ? "msg_mod_coldboot_enabled" : "msg_ori_coldboot_enabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}	
-	else if(strcmp(action_thread, "toggle_sysconf_rco") == 0)
+	/*else if(strcmp(action_thread, "toggle_sysconf_rco") == 0)
 	{
 		CellFsStat statinfo;
 
 		if(toggle_sysconf() == CELL_OK)
 			ShowMessage((cellFsStat("/dev_flash/vsh/resource/sysconf_plugin.rco.ori", &statinfo) == CELL_OK) ? "msg_mod_sysconf_enabled" : "msg_ori_sysconf_enabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
-	}
+	}*/
+
+	// Buzzer Options
+	else if(strcmp(action_thread, "buzzer_single") == 0)
+		buzzer(SINGLE_BEEP);
+	else if(strcmp(action_thread, "buzzer_double") == 0)
+		buzzer(DOUBLE_BEEP);
+	else if(strcmp(action_thread, "buzzer_triple") == 0)
+		buzzer(TRIPLE_BEEP);
+	else if(strcmp(action_thread, "buzzer_continuous") == 0)
+		buzzer(CONTINUOUS_BEEP);
+
+	// CEX2DEX Options
+	else if(strcmp(action_thread, "convert_cex") == 0)
+		cex2dex(0);
+	else if(strcmp(action_thread, "convert_dex") == 0)
+		cex2dex(1);
+	else if(strcmp(action_thread, "swap_kernel") == 0)
+		swap_kernel();
+	else if(strcmp(action_thread, "check_targetid") == 0)			
+		check_targetid(0);
+	else if(strcmp(action_thread, "swap_ip_xmb") == 0)			
+		toggle_xmbplugin();
+	else if(strcmp(action_thread, "toggle_vsh") == 0)			
+		toggle_vsh();
+	else if(strcmp(action_thread, "toggle_sysconf") == 0)			
+		toggle_sysconf();
+	else if(strcmp(action_thread, "cex2dex_showinfo") == 0)
+		get_ps3_info();
+
+	// Led Options
+	else if(strcmp(action_thread, "set_led_off") == 0)
+		setLed("ledOff");
+	else if(strcmp(action_thread, "set_led_red") == 0) 
+		setLed("ledRed_default");
+	else if(strcmp(action_thread, "set_led_red_slow") == 0) 
+		setLed("ledRed_blink_slow");
+	else if(strcmp(action_thread, "set_led_red_fast") == 0) 
+		setLed("ledRed_blink_fast");
+	else if(strcmp(action_thread, "set_led_green") == 0) 
+		setLed("ledGreen_default");
+	else if(strcmp(action_thread, "set_led_green_slow") == 0) 
+		setLed("ledGreen_blink_slow");
+	else if(strcmp(action_thread, "set_led_green_fast") == 0) 
+		setLed("ledGreen_blink_fast");
+	else if(strcmp(action_thread, "set_led_yellow") == 0) 
+		setLed("ledYellow_default");
+	else if(strcmp(action_thread, "set_led_yellow_slow") == 0) 
+		setLed("ledYellow_blink_slow");
+	else if(strcmp(action_thread, "set_led_yellow_fast") == 0) 
+		setLed("ledYellow_blink_fast");
+	else if(strcmp(action_thread, "set_led_yellowg_slow") == 0) 
+		setLed("ledYellowG_blink_slow");
+	else if(strcmp(action_thread, "set_led_yellowg_fast") == 0) 
+		setLed("ledYellowG_blink_fast");
+	else if(strcmp(action_thread, "set_led_yellowr_slow") == 0) 
+		setLed("ledYellowR_blink_slow");
+	else if(strcmp(action_thread, "set_led_yellowr_fast") == 0) 
+		setLed("ledYellowR_blink_fast");
+	else if(strcmp(action_thread, "set_led_rainbow") == 0) 
+		setLed("rainbow");
+	else if(strcmp(action_thread, "set_led_special1") == 0) 
+		setLed("special1");
+	else if(strcmp(action_thread, "set_led_special2") == 0) 
+		setLed("special2");
 
 	// QA options
 	else if(strcmp(action_thread, "check_qa") == 0)
-		check_QA();
+		read_qa_flag();
 	else if(strcmp(action_thread, "enable_qa") == 0)
-		set_qa(1);	
+		set_qa(1);
 	else if(strcmp(action_thread, "disable_qa") == 0)
 		set_qa(0);
 
-	// xRegistry options
-	else if(strcmp(action_thread, "show_accountid") == 0)
-		getAccountID();		
-	else if(strcmp(action_thread, "backup_license") == 0)
-		backup_license();
-	else if(strcmp(action_thread, "remove_license") == 0)
-		remove_license();
+	// xRegistry options	
 	else if(strcmp(action_thread, "backup_registry") == 0)	
 		backup_registry();	
 	else if(strcmp(action_thread, "button_assignment") == 0)
-		button_assignment();
+		button_assignment();	
 
 	// Rebug options	
-	else if(strcmp(action_thread, "normal_mode") == 0)	
+	/*else if(strcmp(action_thread, "normal_mode") == 0)	
 	{
 		if(normal_mode() == CELL_OK)
 		{
@@ -407,14 +511,22 @@ static void plugin_thread(uint64_t arg)
 	}
 	else if(strcmp(action_thread, "debugsettings_mode") == 0)		
 		debugsettings_mode();	
+	else if(strcmp(action_thread, "xmb_plugin") == 0)	
+	{
+		if(toggle_xmb_plugin() == CELL_OK)
+		{
+			wait(3);
+			xmb_reboot(SYS_SOFT_REBOOT);
+		}
+	}
 	else if(strcmp(action_thread, "xmb_mode") == 0)	
 	{
 		if(toggle_xmb_mode() == CELL_OK)
 		{
-			wait(2);
+			wait(3);
 			xmb_reboot(SYS_SOFT_REBOOT);
 		}
-	}
+	}*/
 	/*else if(strcmp(action_thread, "download_toolbox") == 0)	
 		download_toolbox();*/
 	/*else if(strcmp(action_thread, "install_toolbox") == 0)	
@@ -433,6 +545,14 @@ static void plugin_thread(uint64_t arg)
 	}	
 	else if(strcmp(action_thread, "remarry_bd") == 0)			
 		remarry_bd();	
+	else if(strcmp(action_thread, "check_ros_bank") == 0)			
+		check_ros_bank();	
+	else if(strcmp(action_thread, "check_8th_spe") == 0)			
+		check_8th_spe();	
+	else if(strcmp(action_thread, "toggle_8th_spe") == 0)			
+		toggle_8th_spe();
+	else if(strcmp(action_thread, "patch_prodg") == 0)	
+		Patch_ProDG();
 	else if(strcmp(action_thread, "toggle_devblind") == 0)			
 		toggle_devblind();	
 	else if(strcmp(action_thread, "load_kernel") == 0)	
@@ -444,20 +564,47 @@ static void plugin_thread(uint64_t arg)
 	else if(strcmp(action_thread, "dump_idps") == 0)	
 		dump_idps();	
 	else if(strcmp(action_thread, "dump_psid") == 0)	
-		dump_psid();
+		dump_psid();		
 	else if(strcmp(action_thread, "dump_erk") == 0)	
 		dumpERK();		
 	else if(strcmp(action_thread, "dump_lv2") == 0)	
 		dump_lv(LV2);		
 	else if(strcmp(action_thread, "dump_lv1") == 0)	
 		dump_lv(LV1);
+	else if(strcmp(action_thread, "dump_ram") == 0)	
+		dump_lv(RAM);
+	else if(strcmp(action_thread, "dump_sysrom") == 0)	
+		dump_sysrom();
+	else if(strcmp(action_thread, "dump_eeprom") == 0)	
+		dump_eeprom();
+	else if(strcmp(action_thread, "dump_syscon_log") == 0)	
+		sm_error_log();
+	else if(strcmp(action_thread, "get_token_seed") == 0)	
+		get_token_seed();
+	else if(strcmp(action_thread, "dump_flash") == 0)	
+		dump_flash();
 	else if(strcmp(action_thread, "log_klic") == 0)	
 		log_klic();	
 	else if(strcmp(action_thread, "log_secureid") == 0)	
 		log_secureid();	
 	else if(strcmp(action_thread, "dump_disc_key") == 0)	
-		dump_disc_key();	
+		dump_disc_key();
 
+	// OtherOS options
+	else if(strcmp(action_thread, "otheros_resize") == 0)	
+	{
+		if(check_flash_type())
+			setup_vflash();
+		else
+			setup_flash();
+	}
+	else if(strcmp(action_thread, "otheros_petitboot") == 0)
+		install_petitboot();
+	else if(strcmp(action_thread, "otheros_flag") == 0)
+		set_flag(OTHEROS_FLAG);
+	else if(strcmp(action_thread, "gameos_flag") == 0)
+		set_flag(GAMEOS_FLAG);
+	
 	// Recovery options
 	else if(strcmp(action_thread, "applicable_version") == 0)	
 		applicable_version();	
@@ -465,18 +612,18 @@ static void plugin_thread(uint64_t arg)
 		sys_sm_shutdown(SYS_SOFT_REBOOT);
 	else if(strcmp(action_thread, "rebuild_db") == 0)
 		rebuild_db();
+	else if(strcmp(action_thread, "toggle_hdd_space") == 0)
+		unlock_hdd_space();
 	else if(strcmp(action_thread, "recovery_mode") == 0)
-		recovery_mode();	
+		recovery_mode();
 			
 	// Unused options
-	else if(strcmp(action_thread, "enable_screenshot") == 0)			
+	/*else if(strcmp(action_thread, "enable_screenshot") == 0)			
 		enable_screenshot();		
 	else if(strcmp(action_thread, "enable_recording") == 0)	
 		enable_recording();	
 	else if(strcmp(action_thread, "override_sfo") == 0)		
 		override_sfo();					
-	else if(strcmp(action_thread, "ledmod") == 0)			
-		control_led(action_thread);
 	else if(strcmp(action_thread, "enable_hvdbg") == 0)
 	{
 		if(enable_hvdbg() == true)
@@ -485,7 +632,7 @@ static void plugin_thread(uint64_t arg)
 	else if(strcmp(action_thread, "usb_firm_loader") == 0)	
 		usb_firm_loader();	
 	else if(strcmp(action_thread, "toggle_dlna") == 0)	
-		toggle_dlna();	
+		toggle_dlna();	*/
 	
 	sys_ppu_thread_exit(0);
 }

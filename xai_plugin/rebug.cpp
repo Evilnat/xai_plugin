@@ -11,6 +11,17 @@
 
 void normal_mode_to_rebug_mode()
 {
+	CellFsStat stat;
+
+	if(cellFsStat(VSH_SWP, &stat) == CELL_OK && cellFsStat(VSH_DSP, &stat) == CELL_OK)
+	{
+		if(cellFsStat(SYSCONF_SPRX_CEX, &stat) == CELL_OK)
+		{
+			cellFsRename(SYSCONF_SPRX, SYSCONF_SPRX_DEX);
+			cellFsRename(SYSCONF_SPRX_CEX, SYSCONF_SPRX);
+		}
+	}
+
 	cellFsRename(VSH_SELF, VSH_NRM);
 	cellFsRename(VSH_SWP, VSH_SELF);
 
@@ -33,39 +44,84 @@ void rebug_mode_to_normal_mode()
 	cellFsRename(VER_NRM, VER_TXT);
 }
 
-int toggle_xmb_mode()
+int toggle_xmb_plugin()
 {
 	int ret;
 	CellFsStat stat;
 
-	if(cellFsStat("/dev_blind", &stat) != CELL_OK)
+	if(cellFsStat(DEV_BLIND, &stat) != CELL_OK)
 	{
-		ret = cellFsUtilMount("CELL_FS_IOS:BUILTIN_FLSH1", "CELL_FS_FAT", "/dev_blind", 0, 0, 0, 0);
+		ret = cellFsUtilMount("CELL_FS_IOS:BUILTIN_FLSH1", "CELL_FS_FAT", DEV_BLIND, 0, 0, 0, 0);
 		log_function("xai_plugin", __VIEW__, "cellFsUtilMount", "(/dev_blind) = %x\n", ret);
 
 		if(ret != CELL_OK)
 		{
 			ShowMessage("msg_devblind_mount_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-			return ret;
+			return 1;
 		}
 	}
 
-	if(cellFsStat(XMB_PLUGIN_SPRX_DEX, &stat) == CELL_OK && cellFsStat(XMB_PLUGIN_SPRX_CEX, &stat) != CELL_OK)
+	if(cellFsStat(XMB_PLUGIN_SPRX_DEX, &stat) == CELL_OK)
 	{
 		cellFsRename(XMB_PLUGIN_SPRX, XMB_PLUGIN_SPRX_CEX);
 		cellFsRename(XMB_PLUGIN_SPRX_DEX, XMB_PLUGIN_SPRX);
-		ShowMessage("msg_xmb_dex", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);	
+		ShowMessage("msg_host_enabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);	
+		return 0;
 	}
-	else if(cellFsStat(XMB_PLUGIN_SPRX_CEX, &stat) == CELL_OK && cellFsStat(XMB_PLUGIN_SPRX_DEX, &stat) != CELL_OK)
+	else if(cellFsStat(XMB_PLUGIN_SPRX_CEX, &stat) == CELL_OK)
 	{
 		cellFsRename(XMB_PLUGIN_SPRX, XMB_PLUGIN_SPRX_DEX);
 		cellFsRename(XMB_PLUGIN_SPRX_CEX, XMB_PLUGIN_SPRX);
-		ShowMessage("msg_xmb_cex", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);	
+		ShowMessage("msg_host_disabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);	
+		return 0;
 	}
 	else
 		ShowMessage("msg_switch_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 	
-	return ret;
+	return 1;
+}
+
+int toggle_xmb_mode()
+{
+	int ret;
+	CellFsStat stat;
+
+	if(cellFsStat(DEV_BLIND, &stat) != CELL_OK)
+	{
+		ret = cellFsUtilMount("CELL_FS_IOS:BUILTIN_FLSH1", "CELL_FS_FAT", DEV_BLIND, 0, 0, 0, 0);
+		log_function("xai_plugin", __VIEW__, "cellFsUtilMount", "(/dev_blind) = %x\n", ret);
+
+		if(ret != CELL_OK)
+		{
+			ShowMessage("msg_devblind_mount_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			return 1;
+		}
+	}
+
+	if(cellFsStat(VSH_SWP, &stat) == CELL_OK)
+	{		
+		ShowMessage("msg_need_rebug_mode", (char*)XAI_PLUGIN, (char*)TEX_WARNING);			
+		return 1;
+	}
+
+	if(cellFsStat(VSH_DSP, &stat) == CELL_OK)
+	{
+		cellFsRename(VSH_SELF, VSH_CSP);
+		cellFsRename(VSH_DSP, VSH_SELF);
+		ShowMessage("msg_xmb_dex", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);			
+		return 0;
+	}
+	else if(cellFsStat(VSH_CSP, &stat) == CELL_OK)
+	{
+		cellFsRename(VSH_SELF, VSH_DSP);
+		cellFsRename(VSH_CSP, VSH_SELF);
+		ShowMessage("msg_xmb_cex", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);			
+		return 0;
+	}
+	else
+		ShowMessage("msg_switch_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+
+	return 1;	
 }
 
 int normal_mode()
@@ -73,9 +129,9 @@ int normal_mode()
 	int ret;
 	CellFsStat statinfo;
 
-	if(cellFsStat("/dev_blind", &statinfo) != CELL_OK)
+	if(cellFsStat(DEV_BLIND, &statinfo) != CELL_OK)
 	{
-		ret = cellFsUtilMount("CELL_FS_IOS:BUILTIN_FLSH1", "CELL_FS_FAT", "/dev_blind", 0, 0, 0, 0);
+		ret = cellFsUtilMount("CELL_FS_IOS:BUILTIN_FLSH1", "CELL_FS_FAT", DEV_BLIND, 0, 0, 0, 0);
 		log_function("xai_plugin", __VIEW__, "cellFsUtilMount", "(/dev_blind) = %x\n", ret);
 
 		if(ret != CELL_OK)
@@ -105,7 +161,7 @@ int normal_mode()
 	else
 		ShowMessage("msg_switch_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 
-	log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount("/dev_blind", 0));
+	log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount(DEV_BLIND, 0));
 
 	return ret;	
 }
@@ -115,9 +171,9 @@ int rebug_mode()
 	int ret;
 	CellFsStat statinfo;
 
-	if(cellFsStat("/dev_blind", &statinfo) != CELL_OK)
+	if(cellFsStat(DEV_BLIND, &statinfo) != CELL_OK)
 	{
-		ret = cellFsUtilMount("CELL_FS_IOS:BUILTIN_FLSH1", "CELL_FS_FAT", "/dev_blind", 0, 0, 0, 0);
+		ret = cellFsUtilMount("CELL_FS_IOS:BUILTIN_FLSH1", "CELL_FS_FAT", DEV_BLIND, 0, 0, 0, 0);
 		log_function("xai_plugin", __VIEW__, "cellFsUtilMount", "(/dev_blind) = %x\n", ret);
 
 		if(ret != CELL_OK)
@@ -147,7 +203,7 @@ int rebug_mode()
 	else
 		ShowMessage("msg_switch_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 
-	log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount("/dev_blind", 0));
+	log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount(DEV_BLIND, 0));
 
 	return ret;	
 }
@@ -157,9 +213,9 @@ int debugsettings_mode()
 	int ret;
 	CellFsStat statinfo;
 
-	if(cellFsStat("/dev_blind", &statinfo) != CELL_OK)
+	if(cellFsStat(DEV_BLIND, &statinfo) != CELL_OK)
 	{
-		ret = cellFsUtilMount("CELL_FS_IOS:BUILTIN_FLSH1", "CELL_FS_FAT", "/dev_blind", 0, 0, 0, 0);
+		ret = cellFsUtilMount("CELL_FS_IOS:BUILTIN_FLSH1", "CELL_FS_FAT", DEV_BLIND, 0, 0, 0, 0);
 		log_function("xai_plugin", __VIEW__, "cellFsUtilMount", "(/dev_blind) = %x\n", ret);
 
 		if(ret != CELL_OK)
@@ -173,7 +229,7 @@ int debugsettings_mode()
 	if(cellFsStat(SYSCONF_SPRX_CEX, &statinfo) == CELL_OK)
 	{
 		cellFsRename(SYSCONF_SPRX, SYSCONF_SPRX_DEX);
-		cellFsRename(SYSCONF_SPRX_CEX, SYSCONF_SPRX);	
+		cellFsRename(SYSCONF_SPRX_CEX, SYSCONF_SPRX);
 		ShowMessage("msg_debug_settings_cex", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);	
 	}
 	// "/dev_blind/vsh/module/sysconf_plugin.sprx.dex"
@@ -189,7 +245,7 @@ int debugsettings_mode()
 		return 1;
 	}
 
-	log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount("/dev_blind", 0));	
+	log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount(DEV_BLIND, 0));	
 
 	return CELL_OK;
 }

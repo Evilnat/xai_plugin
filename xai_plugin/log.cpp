@@ -14,8 +14,11 @@ int (*vshtask_A02D46E7)(int, const char *);
 
 void load_log_functions()
 {	
-	(void*&)(vsh_sprintf) = (void*)((int)getNIDfunc("stdc", 0x273B9711));
-	(void*&)(vsh_swprintf) = (void*)((int)getNIDfunc("stdc", 0x62BF1D6C));	
+	setNIDfunc(vsh_sprintf, "stdc", 0x273B9711);
+	setNIDfunc(vsh_swprintf, "stdc", 0x62BF1D6C);
+
+	/*(void*&)(vsh_sprintf) = (void*)((int)getNIDfunc("stdc", 0x273B9711));
+	(void*&)(vsh_swprintf) = (void*)((int)getNIDfunc("stdc", 0x62BF1D6C));	*/
 }
 
 int console_write(const char *s)
@@ -106,6 +109,31 @@ int swprintf_(wchar_t *str, size_t size, const wchar_t *format, int v1, int v2, 
 int swprintf_(wchar_t *str, size_t size, const wchar_t *format, int v1, int v2, int v3, int v4)
 {
 	return vsh_swprintf(str, size, format, v1, v2, v3, v4);
+}
+
+int swprintf_(wchar_t *str, size_t size, const wchar_t *format, int v1, int v2, int v3, int v4, int v5)
+{
+	return vsh_swprintf(str, size, format, v1, v2, v3, v4, v5);
+}
+
+int swprintf_(wchar_t *str, size_t size, const wchar_t *format, int v1, int v2, int v3, int v4, int v5, int v6)
+{
+	return vsh_swprintf(str, size, format, v1, v2, v3, v4, v5, v6);
+}
+
+int swprintf_(wchar_t *str, size_t size, const wchar_t *format, int v1, int v2, int v3, int v4, int v5, int v6, int v7)
+{
+	return vsh_swprintf(str, size, format, v1, v2, v3, v4, v5, v6, v7);
+}
+
+int swprintf_(wchar_t *str, size_t size, const wchar_t *format, int v1, int v2, int v3, int v4, int v5, int v6, int v7, int v8)
+{
+	return vsh_swprintf(str, size, format, v1, v2, v3, v4, v5, v6, v7, v8);
+}
+
+int swprintf_(wchar_t *str, size_t size, const wchar_t *format, int v1, int v2, int v3, int v4, int v5, int v6, int v7, int v8, int v9)
+{
+	return vsh_swprintf(str, size, format, v1, v2, v3, v4, v5, v6, v7, v8, v9);
 }
 
 void log(char *format, float param1)

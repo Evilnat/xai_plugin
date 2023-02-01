@@ -16,6 +16,7 @@ static int (*paf_11E195B3_opd)(int view, char * objectname);
 static int (*ps3_savedata_plugin_init)(void*);
 static int (*sub_CEF84_opd)(int view);
 
+
 int recording_start(char * action);
 static int (*vsh_37857F3F)(int) = 0;
 static int (*vsh_F399CA36)(int) = 0;
@@ -35,6 +36,7 @@ static void notify(const char * format, int param1);
 static int (*vshmain_6D5FC398)(int dev_type, int port_num, int intr_type); // BeginInGameXMB
 
 static int (*reco_open)(int);
+
 
 #define MB(x)		(x*(1024*1024))
 

@@ -1,27 +1,16 @@
-
 /*
 	Imported by Evilnat for xai_plugin from flatz's EID root key dumper
+	https://github.com/Joonie86/erk_dumper
 */
 
+#include <string.h>
+#include <cell/fs/cell_fs_file_api.h>
+#include <sysutil/sysutil_gamecontent.h>
 #include "payload.h"
-#include "hvcall.h"
 #include "mm.h"
-#include "functions.h"
 #include "cfw_settings.h"
 #include "log.h"
 #include "erk.h"
-
-#include <sys/memory.h>
-#include <sys/paths.h>
-#include <sys/process.h>
-#include <sys/return_code.h>
-
-#include <cell/sysmodule.h>
-#include <cell/cell_fs.h>
-
-#include <sysutil/sysutil_gamecontent.h>
-
-#include <cell/fs/cell_fs_file_api.h>
 
 static uint8_t eid_root_key[EID_ROOT_KEY_SIZE];
 
@@ -48,9 +37,9 @@ static int make_patches(void)
 	map1_ori = lv1_peek(MAP1_OFFSET);
 	map2_ori = lv1_peek(MAP2_OFFSET);
 	spe_ori = lv1_peek(SPE_REGISTER_OFFSET);
-	permission_ori = peekq(PERMISSION_OFFSET);
-	OPD1_ori = peekq(OPD_OFFSET + 0);
-	OPD2_ori = peekq(OPD_OFFSET + 8);	
+	permission_ori = lv2_peek(PERMISSION_OFFSET);
+	OPD1_ori = lv2_peek(OPD_OFFSET + 0);
+	OPD2_ori = lv2_peek(OPD_OFFSET + 8);	
 
 	for(int i = 0; i < 7; i += 2)
 	{
@@ -61,7 +50,7 @@ static int make_patches(void)
 	}
 
 	/* permission patch */
-	pokeq(PERMISSION_OFFSET, PERMISSION_PATCH);
+	lv2_poke(PERMISSION_OFFSET, PERMISSION_PATCH);
 
 	/* remove page protection bits from htab entries */
 	patch_htab_entries(0);
@@ -75,11 +64,17 @@ static int restore_patches(void)
 	lv1_poke(MAP1_OFFSET, map1_ori);
 	lv1_poke(MAP2_OFFSET, map2_ori);
 	lv1_poke(SPE_REGISTER_OFFSET, spe_ori);
-	pokeq(PERMISSION_OFFSET, permission_ori);
-	pokeq(OPD_OFFSET + 0, OPD1_ori);
-	pokeq(OPD_OFFSET + 8, OPD2_ori);
+	lv2_poke(PERMISSION_OFFSET, permission_ori);
+	lv2_poke(OPD_OFFSET + 0, OPD1_ori);
+	lv2_poke(OPD_OFFSET + 8, OPD2_ori);
 
 	return 0;
+}
+
+int run_payload(uint64_t arg, uint64_t arg_size) 
+{
+	system_call_2(SYSCALL_RUN_PAYLOAD, (uint64_t)arg, (uint64_t)arg_size);
+	return_to_user_prog(int);
 }
 
 int dump_eid_root_key(const char* file_path) 

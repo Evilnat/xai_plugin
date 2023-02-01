@@ -15,29 +15,20 @@
 #include "gccpch.h"
 #include "des.h"
 #include "erk.h"
-#include "rebug.h"
-#include "common.h"
+#include "qa.h"
+#include "savegames.h"
+#include "cex2dex.h"
+#include "npsignin_plugin.h"
 
 extern "C" int _videorec_export_function_video_rec(void);
 extern "C" int _videorec_export_function_klicensee(void);
 extern "C" int _videorec_export_function_secureid(void);
 extern "C" int _videorec_export_function_sfoverride(void);
 
-uint8_t fake_accountid[0x10] = 
-{
-    0x30, 0x32, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 
-    0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30
-};
-
-uint8_t empty[0x10] = 
-{
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-};
-
 int bdvd_fd;
 char pkg_path[255];
 wchar_t wchar_string[120]; // Global variable for swprintf
+wchar_t *url_path;
 
 xBDVD *iBdvd;
 eid2_struct eid2;
@@ -68,6 +59,61 @@ int AesCbcCfbDecrypt(void *out, void *in, uint32_t length, void *user_key, int b
 	return cellCryptoPuAesCbcCfb128Decrypt(out, in, length, user_key, bits, iv);
 }
 
+int aes_omac1(uint8_t *out, uint8_t *input, uint32_t length, uint8_t *key, uint32_t keybits)
+{
+	cellCryptoPuAesOmac1Mode(out, input, length, key, keybits);
+}
+
+int sha1_hmac(uint8_t *hmac_hash, uint8_t *data_in, int32_t data_length, uint8_t *key, int32_t key_length)
+{
+	return cellCryptoPuSha1Hmac(hmac_hash, data_in, data_length, key, key_length);
+}
+
+int sha1_hmac_starts(uint64_t data[160], uint8_t *key, int32_t key_length)
+{
+	return cellCryptoPuSha1HmacInit(data, key, key_length);
+}
+
+int sha1_hmac_update(uint64_t data[160], uint8_t *data_in, int32_t data_length)
+{
+	return cellCryptoPuSha1HmacTransform(data, data_in, data_length);
+}
+
+int sha1_hmac_finish(uint8_t *hmac_hash, uint64_t data[160])
+{
+	return cellCryptoPuSha1HmacFinal(hmac_hash, data);
+}
+
+int update_mgr_read_eeprom(int offset, void *buffer)
+{
+	return update_mgr_read_eprom(offset, buffer);
+}
+
+int update_mgr_write_eeprom(int offset, int value)
+{
+	return update_mgr_write_eprom(offset, value);
+}
+
+int sys_storage_send_atapi_command(uint32_t fd, struct lv2_atapi_cmnd_block *atapi_cmnd, uint8_t *buffer) 
+{
+	return sys_storage_send_device_command(fd, 1, atapi_cmnd , sizeof (struct lv2_atapi_cmnd_block), buffer, atapi_cmnd->block_size * atapi_cmnd->blocks);
+}
+
+void free__(void *ptr)
+{
+	free_(ptr);
+}
+
+int malloc__(size_t size)
+{
+	return (int)malloc_(size);
+}
+
+int memalign__(size_t boundary, size_t size_arg)
+{
+	return (int)memalign_(boundary, size_arg);
+}
+
 int handler1_enabled()
 {
 	return vshmain_5F5729FB(0xC);
@@ -95,7 +141,7 @@ int Job_start(void *job, int(*handler1)(), void *param1, int r6, int r7, uint8_t
 	return startJob(job, handler1, param1, r6, r7, handler2);
 }
 
-static int GetIDPS(void *idps)
+int GetIDPS(void *idps)
 {
 	return cellSsAimGetDeviceId(idps);
 }
@@ -113,47 +159,60 @@ void close_xml_list()
 
 void load_cfw_functions()
 {
-	(void*&)(getDiscHashKey) = (void*)((int)getNIDfunc("vsh", 0x2B58A92C)); 
-	(void*&)(authDisc) = (void*)((int)getNIDfunc("vsh", 0xE20104BE)); 
-	(void*&)(cellFsUtilityMount) = (void*)((int)getNIDfunc("vsh", 0xE44F29F4));
-	(void*&)(cellFsUtilUmount) = (void*)((int)getNIDfunc("vsh", 0x33ACD759));
-	(void*&)(cellSsAimGetDeviceId) = (void*)((int)getNIDfunc("vsh", 0x3B4A1AC4));
-	(void*&)(cellSsAimGetOpenPSID) = (void*)((int)getNIDfunc("vsh", 0x9AD2E524));	
-	(void*&)(Authenticate_BD_Drive) = (void*)((int)getNIDfunc("vsh", 0x26709B91));
-	
-	(void*&)(loadModule) = (void*)((int)getNIDfunc("paf", 0xCF068D31));
-	(void*&)(ejectDisc) = (void*)((int)getNIDfunc("paf", 0x55F2C2A6));
-	(void*&)(startJob) = (void*)((int)getNIDfunc("paf", 0x350B4536));
-	(void*&)(getLoadedPlugins) = (void*)((int)getNIDfunc("paf", 0xAF58E756));
-	
-	(void*&)(cellCryptoPuAesCbcCfb128Encrypt) = (void*)((int)getNIDfunc("sdk", 0x7B79B6C5));
-	(void*&)(cellCryptoPuAesCbcCfb128Decrypt) = (void*)((int)getNIDfunc("sdk", 0xB45387CD));	
-	
-	(void*&)(update_mgr_read_eprom) = (void*)((int)getNIDfunc("vshmain", 0x2C563C92));	// packet id 0x600B
-	(void*&)(update_mgr_write_eprom) = (void*)((int)getNIDfunc("vshmain", 0x172B05CD));	// packet id 0x600C
-	(void*&)(vshmain_74A54CBF) = (void*)((int)getNIDfunc("vshmain", 0x74A54CBF));	
-	(void*&)(vshmain_5F5729FB) = (void*)((int)getNIDfunc("vshmain", 0x5F5729FB));	
-	
-	(void*&)(xBDVDGetInstance) = (void*)((int)getNIDfunc("x3", 0x9C246A91));
+	setNIDfunc(getDiscHashKey, "vsh", 0x2B58A92C);
+	setNIDfunc(authDisc, "vsh", 0xE20104BE);
+	setNIDfunc(cellFsUtilityMount, "vsh", 0xE44F29F4);
+	setNIDfunc(cellFsUtilUmount, "vsh", 0x33ACD759);
+	setNIDfunc(cellSsAimGetDeviceId, "vsh", 0x3B4A1AC4);
+	setNIDfunc(cellSsAimGetOpenPSID, "vsh", 0x9AD2E524);
+	setNIDfunc(Authenticate_BD_Drive, "vsh", 0x26709B91);
+
+	setNIDfunc(loadModule, "paf", 0xCF068D31);
+	setNIDfunc(ejectDisc, "paf", 0x55F2C2A6);
+	setNIDfunc(startJob, "paf", 0x350B4536);
+	setNIDfunc(getLoadedPlugins, "paf", 0xAF58E756);
+
+	setNIDfunc(cellCryptoPuAesCbcCfb128Encrypt, "sdk", 0x7B79B6C5);
+	setNIDfunc(cellCryptoPuAesCbcCfb128Decrypt, "sdk", 0xB45387CD);
+	setNIDfunc(cellCryptoPuAesEncKeySet, "sdk", 0xFC096B9E);	
+	setNIDfunc(cellCryptoPuAesOmac1Mode, "sdk", 0x68B630D5);	
+
+	setNIDfunc(cellCryptoPuSha1Hmac, "sdk", 0x74A2A1FE);
+	setNIDfunc(cellCryptoPuSha1HmacInit, "sdk", 0x547B602C);
+	setNIDfunc(cellCryptoPuSha1HmacTransform, "sdk", 0x4484A101);
+	setNIDfunc(cellCryptoPuSha1HmacFinal, "sdk", 0x300B99F2);
+
+	setNIDfunc(update_mgr_read_eprom, "vshmain", 0x2C563C92);
+	setNIDfunc(update_mgr_write_eprom, "vshmain", 0x172B05CD);
+	setNIDfunc(vshmain_74A54CBF, "vshmain", 0x74A54CBF);
+	setNIDfunc(vshmain_5F5729FB, "vshmain", 0x5F5729FB);
+
+	setNIDfunc(xBDVDGetInstance, "x3", 0x9C246A91);
 	iBdvd = (xBDVD*)xBDVDGetInstance();
-		
-	(void*&)(xSettingRegistryGetInterface) = (void*)((int)getNIDfunc("xsetting", 0xD0261D72));
-	(void*&)(xSettingSystemInfoGetInterface) = (void*)((int)getNIDfunc("xsetting", 0xAF1F161));
-	(void*&)(xUserGetInterface) = (void*)((int)getNIDfunc("xsetting", 0xCC56EB2D));	
 
-	(void*&)(NotifyWithTexture) = (void*)((int)getNIDfunc("vshcommon", 0xA20E43DB)); 
-	(void*&)(FindTexture) = (void*)((int)getNIDfunc("paf", 0x3A8454FC)); 
-	(void*&)(mbstowcs2) = (void*)((int)getNIDfunc("stdc", 0xFCAC2E8E));
+	setNIDfunc(xSettingRegistryGetInterface, "xsetting", 0xD0261D72);
+	setNIDfunc(xSettingSystemInfoGetInterface, "xsetting", 0xAF1F161);
+	setNIDfunc(xUserGetInterface, "xsetting", 0xCC56EB2D);
 
-	(void*&)(free_) = (void*)((int)getNIDfunc("allocator", 0x77A602DD));
-	(void*&)(malloc_) = (void*)((int)getNIDfunc("allocator", 0x759E0635));	
+	setNIDfunc(NotifyWithTexture, "vshcommon", 0xA20E43DB);
+	setNIDfunc(FindTexture, "paf", 0x3A8454FC);
 
-	(void*&)(FindPlugin) = (void*)((int)getNIDfunc("paf", 0xF21655F3));
-	(void*&)(wcstombs2) = (void*)((int)getNIDfunc("stdc", 0xB680E240)); 
+	setNIDfunc(free_, "allocator", 0x77A602DD);
+	setNIDfunc(malloc_, "allocator", 0x759E0635);
+	setNIDfunc(memalign_, "allocator", 0x6137D196);
 
-	(void*&)(FindString) = (void*)((int)getNIDfunc("paf", 0x89B67B9C));
+	setNIDfunc(FindPlugin, "paf", 0xF21655F3);
+	setNIDfunc(wcstombs_, "stdc", 0xB680E240);
+	setNIDfunc(stoull_, "stdc", 0xD417EEB5);
 
-	(void*&)(sys_io_unknown) = (void*)((int)getNIDfunc("sys_io", 0x7009B738));
+	setNIDfunc(fopen_, "stdc", 0x69C27C12);
+	setNIDfunc(fclose_, "stdc", 0xE1BD3587);
+	setNIDfunc(fprintf_, "stdc", 0xFAEC8C60);
+	setNIDfunc(ctime_, "stdc", 0xBC7B4B8E);		
+
+	setNIDfunc(FindString, "paf", 0x89B67B9C);
+
+	setNIDfunc(sceNetCtlGetInfoVsh, "netctl_main", 0x9A528B81);	
 }
 
 int RetrieveString(const char *string, const char *plugin)
@@ -170,7 +229,7 @@ void PrintString(wchar_t *string, const char *plugin, const char *tex_icon)
 	int plugin_uint = FindPlugin((char*)plugin);
 
 	char conv_str[120];
-	wcstombs2((char *)conv_str, (wchar_t *)string, 120 + 1);
+	wcstombs_((char *)conv_str, (wchar_t *)string, 120 + 1);
 
 	log(conv_str);
 	log("\n");
@@ -187,7 +246,7 @@ void ShowMessage(const char *string, const char *plugin, const char *tex_icon)
 	int wstring = FindString(plugin_uint, string);
 
 	char conv_str[120];
-	wcstombs2((char *)conv_str, (wchar_t *)wstring, 120 + 1);
+	wcstombs_((char *)conv_str, (wchar_t *)wstring, 120 + 1);
 
 	log(conv_str);
 	log("\n");
@@ -218,8 +277,9 @@ int create_rifs()
 
 		if(!cellFsStat(USB, &statinfo))
 		{
-			usb_found = true;
+			usb_found = 1;
 			usb_port = i;
+			break;
 		}
 	}
 
@@ -323,20 +383,15 @@ int patch_savedata()
 	char string_sfo[120], string_pfd[120];
 	char USB[120], source[120];	
 
-	if(!check_cobra_version())
-	{
-		ShowMessage("msg_syscall8_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
-		return 1;
-	}
-
 	for(int i = 0; i < 127; i++)
 	{
 		sprintf_(USB, "/dev_usb%03d", i, NULL);
 
 		if(!cellFsStat(USB, &statinfo))
 		{
-			usb_found = true;
+			usb_found = 1;
 			usb_port = i;
+			break;
 		}
 	}
 
@@ -348,16 +403,16 @@ int patch_savedata()
 	
 	ShowMessage("msg_savedata_converting_wait", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
 
-	sprintf_(USB, "/dev_usb%03d/PS3/SAVEDATA", usb_port, NULL);
+	sprintf_(USB, "/dev_usb%03d/PS3/SAVEDATA", usb_port, NULL);	
 
 	if(!cellFsOpendir(USB, &fd))
 	{
-		int saves_converted = 0;
+		int saves_converted = 0;		
 
 		while(!cellFsReaddir(fd, &dir, &read))
 		{
 			if(read == 0)
-				break;			
+				break;		
 
 			sprintf_(string_sfo, "%s/%s/PARAM.SFO", (int)USB, (int)dir.d_name);
 			sprintf_(string_pfd, "%s/%s/PARAM.PFD", (int)USB, (int)dir.d_name);
@@ -366,19 +421,18 @@ int patch_savedata()
 				continue;					
 
 			if(cellFsStat(string_sfo, &statinfo) != 0 || cellFsStat(string_pfd, &statinfo) != 0)	
-				continue;    						
+				continue;    
 
-			sprintf_(source, "%s/%s", (int)USB, (int)dir.d_name);		
+			sprintf_(source, "%s/%s", (int)USB, (int)dir.d_name);	
 
-			system_call_3(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_CONVERT_SAVEDATA, (uint64_t)source);  
-			int ret = (int)(p1);
+			int ret = patch_savedatas(source);
 
 			if(ret != 0)
 			{
 				switch(ret)
 				{							
 					case 1:	
-						string = RetrieveString("msg_savedata_userid_fail", (char*)XAI_PLUGIN);	
+						string = RetrieveString("msg_xreg_open_error", (char*)XAI_PLUGIN);	
 						break;
 					case 2:	
 						string = RetrieveString("msg_savedata_accountid_fail", (char*)XAI_PLUGIN);	
@@ -451,66 +505,51 @@ int patch_savedata()
 
 int getAccountID()
 {
-	int fd;	
 	int string;
-    uint64_t dummy, read, seek;
 	uint16_t offset = 0;
-
 	char entry[120];
-	char *buffer = (char *)malloc_(0x2A);	
 
-	ShowMessage("msg_accountid_searching", (char*)XAI_PLUGIN, (char*)TEX_INFO2);	
-
-	if(cellFsOpen(XREGISTRY_FILE, CELL_FS_O_RDWR, &fd, 0, 0) != 0)
+	uint8_t *dump = (uint8_t *)malloc_(XREGISTRY_FILE_SIZE);	
+	if(readfile(XREGISTRY_FILE, dump, XREGISTRY_FILE_SIZE))
 	{
-		ShowMessage("msg_xreg_open_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-		free_(buffer);
-		return -1;    
+		ShowMessage("msg_xreg_open_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		free_(dump);
+		return 1;
 	}
 
 	uint32_t userID = xUserGetInterface()->GetCurrentUserNumber();
 	
 	sprintf_(entry, "/setting/user/%08d/npaccount/accountid", userID, NULL);
 
-	// Search offset from key table
-	for(int i = 0; i < 0x10000; i++)
-	{		
-		cellFsLseek(fd, i, SEEK_SET, &seek);
-		cellFsRead(fd, buffer, 0x2A + 1, &read);
-
-		// Found offset
-		if(strcmp(buffer, entry) == 0) 
+	for (int i = 0; i < 0x10000 - strlen(entry); i++)
+	{
+		if (!strcmp((char *)dump + i, entry))	
 		{
-			uint8_t *data = NULL;
-			offset = i - 0x15;			
+			offset = i - 0x15;
 
-			// Search value from value table
-			for(int i = 0x10000; i < 0x15000; i++)
-			{
-				data = (uint8_t *) malloc_(0x17);
+			for (int i = 0; i < 0x15000 - 2; i++)
+			{      
+				if (*(uint16_t *)(dump + i) == offset && *(uint8_t *)(dump + i + 4) == 0x00 && 
+					*(uint8_t *)(dump + i + 5) == 0x11 && *(uint8_t *)(dump + i + 6) == 0x02)
+				{
+					uint32_t valueOffset = i;
 
-				cellFsLseek(fd, i, SEEK_SET, &seek);
-				cellFsRead(fd, data, 0x17, &read);
-				
-				// Found value
-				if (memcmp(data, &offset, 2) == 0 && data[4] == 0x00 && data[5] == 0x11 && data[6] == 0x02) 
-				{	 
 					uint8_t account_id[0x10];
-					char acc_char[16], output[120];		
+					char acc_char[16], output[120];
 
-					memcpy(&account_id, data + 7, 16);
+					memcpy(&account_id, (uint8_t *)(dump + (uint32_t)valueOffset + 7), 16);
 
 					for(int i = 0; i < 16; i++)
-							acc_char[i] = account_id[i];
+						acc_char[i] = account_id[i];
 
-					acc_char[0x10] = '\0';		
+					acc_char[0x10] = '\0';	
 
-					if(memcmp(data + 7, fake_accountid, 0x10) == 0)					
+					if(memcmp((uint8_t *)(dump + (uint32_t)valueOffset + 7), fake_accountid, 0x10) == 0)					
 					{						
 						string = RetrieveString("msg_accountid_fake", (char*)XAI_PLUGIN);
 						swprintf_(wchar_string, 120, (wchar_t *)string, (int)acc_char);	
 					}
-					else if(memcmp(data + 7, empty, 0x10) == 0)		
+					else if(memcmp((uint8_t *)(dump + (uint32_t)valueOffset + 7), empty, 0x10) == 0)		
 					{				
 						string = RetrieveString("msg_accountid_empty", (char*)XAI_PLUGIN);
 						swprintf_(wchar_string, 120, (wchar_t *)string);	
@@ -519,53 +558,66 @@ int getAccountID()
 					{		
 						string = RetrieveString("msg_accountid_result", (char*)XAI_PLUGIN);
 						swprintf_(wchar_string, 120, (wchar_t *)string, (int)acc_char);
-					}
+					} 
 
-					free_(buffer);
-					free_(data);
-					PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_INFO2);			
+					free_(dump);
+					PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_INFO2);	
 					return 0;
 				}
-
-				free_(data);
 			}
 		}
 	}
-
-	free_(buffer);
-	cellFsClose(fd);	
-
+		
 	ShowMessage("msg_accountid_unable_find", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-
-	return -1;
+	return 1;
 }
 
-void changeAccountID(bool force)
+void getClockSpeeds()
+{
+	// Check if CFW Syscalls are disabled
+	if(check_syscalls())
+	{
+		ShowMessage("msg_cfw_syscalls_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return;
+	}
+
+	uint32_t gpu_Clock = GetGpuClockSpeed();
+	uint32_t gpuddr3_Clock = GetGpuGddr3RamClockSpeed();
+
+	if(!gpu_Clock || !gpuddr3_Clock)
+	{		
+		ShowMessage("msg_clock_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+		return;
+	}
+
+	int string = RetrieveString("msg_clock_speeds", (char*)XAI_PLUGIN);	
+	swprintf_(wchar_string, 120, (wchar_t*)string, (uint32_t)gpu_Clock, gpuddr3_Clock);	
+	PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_INFO2);
+}
+
+void changeAccountID(int mode, int force)
 {
 	if(force)
 		close_xml_list();
 
-	if(!check_cobra_version())
-	{
-		ShowMessage("msg_syscall8_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
-		return;
-	}
-
-	uint32_t userID = xUserGetInterface()->GetCurrentUserNumber();
-
-	system_call_4(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_SET_FAKE_ACCOUNTID, (uint64_t)userID, force); 
-	int ret = (int)(p1);
+	int ret = set_accountID(mode, force);	
 
 	if(!ret)
 	{
-		ShowMessage("msg_accountid_set_fake", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
+		if(mode == EMPTY)
+			ShowMessage("msg_accountid_set_empty", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);			
+		else
+			ShowMessage("msg_accountid_set_fake", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
+
 		wait(3);
 		xmb_reboot(SYS_HARD_REBOOT);
 	}
-	else if(ret == 1)
+	else if(ret == 1)		
 		ShowMessage("msg_accountid_not_empty", (char*)XAI_PLUGIN, (char*)TEX_WARNING);
 	else if(ret == 2)
 		ShowMessage("msg_accountid_error_autologin", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+	else if(ret == 3)
+		ShowMessage("msg_xreg_open_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);	
 	else
 		ShowMessage("msg_accountid_unable_find", (char*)XAI_PLUGIN, (char*)TEX_ERROR);	
 }
@@ -592,7 +644,7 @@ void backup_license()
 
 		if(!cellFsStat(backup, &stat))
 		{
-			found = true;
+			found = 1;
 			sprintf_(backup, "%s/act.dat", (int)backup, NULL);
 			break;
 		}
@@ -662,9 +714,11 @@ void remove_license()
 int create_syscalls()
 {
 	CellFsStat stat;
+	uint64_t offset;
+
 	system_call_2(808, (uint64_t)"/dev_flash/vsh/module/software_update_plugin.sprx", (uint64_t)&stat);
 
-	if(peekq(SYSCALL_TABLE_OFFSET) != DISABLED)
+	if(!check_syscalls())
 		ShowMessage("msg_create_syscalls_ok", (char *)XAI_PLUGIN, (char*)TEX_SUCCESS);
 	else
 		ShowMessage("msg_create_syscalls_error", (char *)XAI_PLUGIN, (char*)TEX_ERROR);
@@ -685,7 +739,8 @@ int dump_lv(int lv)
 	uint64_t nrw, seek, offset_dumped;
 	CellFsStat st;	
 
-	if(peekq(SYSCALL_TABLE_OFFSET) == DISABLED)
+	// Check if CFW Syscalls are disabled
+	if(check_syscalls())
 	{
 		ShowMessage("msg_cfw_syscalls_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 		return 1;
@@ -695,22 +750,30 @@ int dump_lv(int lv)
 
 	if(lv == LV2)
 	{
-		final_offset = 0x800000;
+		final_offset = 0x800000ULL;
 		dumping = "msg_lv2_dumping";	
 		lv_dumped = "msg_lv2_dumped";
 		lv_error = "msg_lv2_dump_error";
 		lv_dump = LV2_DUMP;
 	}
-	else 
+	else if(lv == LV1)
 	{
-		final_offset = 0x1000000;
+		final_offset = 0x1000000ULL;
 		dumping = "msg_lv1_dumping";	
 		lv_dumped = "msg_lv1_dumped";
 		lv_error = "msg_lv1_dump_error";
 		lv_dump = LV1_DUMP;
 	}
-
-	ShowMessage(dumping, (char *)XAI_PLUGIN, (char *)TEX_INFO2);
+	else if(lv == RAM)
+	{
+		final_offset = 0x10000000ULL;
+		dumping = "msg_full_ram_dumping";	
+		lv_dumped = "msg_full_ram_dumped";
+		lv_error = "msg_full_ram_dump_error";
+		lv_dump = RAM_DUMP;
+	}
+	else
+		return 0;	
 
 	sprintf_(lv_file, lv_dump, platform_info[0], platform_info[1], platform_info[2] >> 4);	
 	sprintf_(dump_file_path, "%s/%s", (int)TMP_FOLDER, (int)lv_file);
@@ -734,6 +797,8 @@ int dump_lv(int lv)
 
 	cellFsChmod(dump_file_path, 0666);
 
+	ShowMessage(dumping, (char *)XAI_PLUGIN, (char *)TEX_INFO2);
+
 	// Quickest method to dump LV2 and LV1 through xai_plugin
 	// Default method will take at least two minutes to dump LV2, and even more for LV1
 	uint8_t *dump = (uint8_t *)malloc_(0x40000);
@@ -742,7 +807,7 @@ int dump_lv(int lv)
 	for(uint64_t offset = start_offset; offset < max_offset; offset += 8)
 	{
 		if(lv == LV2)
-			offset_dumped = peekq(0x8000000000000000ULL + offset);
+			offset_dumped = lv2_peek(0x8000000000000000ULL + offset);
 		else
 			offset_dumped = lv1_peek(0x8000000000000000ULL + offset);
 
@@ -752,14 +817,13 @@ int dump_lv(int lv)
 
 		if(offset == max_offset - 8)
 		{
-			cellFsLseek(fd, fseek_offset, SEEK_SET, &seek);
+			//cellFsLseek(fd, fseek_offset, SEEK_SET, &seek);
 			if(cellFsWrite(fd, dump, 0x40000, &nrw) != SUCCEEDED)
 			{
 				free_(dump);				
 				cellFsClose(fd);
 				cellFsUnlink(dump_file_path);
-
-				ShowMessage(lv_error, (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+				ShowMessage(lv_error, (char *)XAI_PLUGIN, (char *)TEX_ERROR);				
 
 				return 1;
 			}
@@ -774,7 +838,7 @@ int dump_lv(int lv)
 
 			start_offset = start_offset + 0x40000;
 			max_offset = max_offset + 0x40000;
-		}		
+		}
 	}
 
 	free_(dump);
@@ -783,6 +847,7 @@ int dump_lv(int lv)
 	int string = RetrieveString(lv_dumped, (char*)XAI_PLUGIN);	
 	swprintf_(wchar_string, 120, (wchar_t*)string, (int)dump_file_path);	
 	PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
+	buzzer(SINGLE_BEEP);
 
 	return 0;
 }
@@ -790,17 +855,15 @@ int dump_lv(int lv)
 int dumpERK()
 {
 	uint32_t firmware;
-	lv2_get_platform_info(&firmware);
+	check_firmware(&firmware);
 
-	int kernel = check_kernel();	
-
-	if(firmware < 0x4080 && kernel == 1 || firmware < 0x4080 && kernel == 2)
+	if(firmware < 0x4080)
 	{
 		ShowMessage("msg_unsupported_firmware", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 		return -1;
 	}
 
-	if(peekq(SYSCALL_TABLE_OFFSET) == DISABLED)
+	if(check_syscalls())
 	{
 		ShowMessage("msg_cfw_syscalls_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 		return -1;
@@ -809,6 +872,113 @@ int dumpERK()
 	ShowMessage("msg_dumping_erk", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
 
 	dumperk();	
+}
+
+//	From sguerrini97's dump_sysrom
+//	https://github.com/sguerrini97/psl1ghtv2_ports/tree/master/dump_sysrom/source
+int dump_sysrom()
+{
+	char file[120], usb_file[120];
+	int usb_found = 0, string;
+	int fd, fd_usb, usb_port;
+
+	CellFsStat stat;
+	uint8_t *dump = NULL;	
+	uint64_t off, val, nrw;	
+
+	if(check_syscalls())
+	{
+		ShowMessage("msg_cfw_syscalls_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return 1;
+	}
+
+	if(check_flash_type())
+	{
+		ShowMessage("msg_dump_sysrom_not_supported", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return 1;
+	}
+
+	ShowMessage("msg_dump_sysrom_dumping", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
+
+	sprintf_(file, "/dev_hdd0/tmp/SYSROM.bin", NULL, NULL);
+
+	if(cellFsOpen(file, CELL_FS_O_CREAT | CELL_FS_O_TRUNC | CELL_FS_O_RDWR, &fd, 0, 0) != CELL_FS_SUCCEEDED)	
+		goto error;
+
+	for(off = DUMP_OFFSET; off < DUMP_OFFSET + DUMP_SIZE; off += 8) 
+	{
+		val = lv1_peek(off);
+
+		if(cellFsWrite(fd, &val, 8, &nrw) != CELL_FS_SUCCEEDED)
+			goto error;	
+	}
+
+	// Copy to USB if is detected
+	char port[120];
+	for(int i = 0; i < 127; i++) 
+	{
+		sprintf_(port, "/dev_usb%03d", i, NULL);
+
+		if(!cellFsStat(port, &stat))
+		{
+			usb_port = i;
+			usb_found = 1;
+			break;
+		}
+	}	
+
+	if(usb_found)
+	{
+		uint64_t nr, seek;
+
+		sprintf_(usb_file, "/dev_usb%03d/SYSROM.bin", usb_port, NULL);
+
+		if(cellFsOpen(usb_file, CELL_FS_O_CREAT | CELL_FS_O_TRUNC | CELL_FS_O_RDWR, &fd_usb, 0, 0) != CELL_FS_SUCCEEDED)		
+			goto error;	
+
+		cellFsChmod(usb_file, 0666);
+
+		dump = (uint8_t *)malloc__(0x40000);
+		memset(dump, 0, 0x40000);
+
+		cellFsLseek(fd, 0, SEEK_SET, &seek);
+
+		if(cellFsRead(fd, dump, 0x40000, &nr) != CELL_FS_SUCCEEDED)
+		{
+			free__(dump);				
+			goto error;
+		}		
+
+		if(cellFsWrite(fd_usb, dump, 0x40000, &nrw) != SUCCEEDED)
+		{
+			free__(dump);				
+			goto error;
+		}
+
+		free__(dump);
+		cellFsClose(fd_usb);
+		cellFsUnlink(file);
+	}
+
+	cellFsClose(fd);
+	string = RetrieveString("msg_dump_sysrom_dump_success", (char*)XAI_PLUGIN);	
+	swprintf_(wchar_string, 120, (wchar_t*)string, (int)(usb_found ? usb_file : file));	
+	PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
+	buzzer(SINGLE_BEEP);
+	return 0;
+
+error:
+	cellFsClose(fd);
+	cellFsClose(fd_usb);
+
+	if(cellFsStat(file, &stat) == CELL_FS_SUCCEEDED)
+		cellFsUnlink(file);
+
+	if(cellFsStat(usb_file, &stat) == CELL_FS_SUCCEEDED)
+		cellFsUnlink(usb_file);
+
+	ShowMessage("msg_dump_sysrom_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+	return 1;
 }
 
 int removeSysHistory()
@@ -822,33 +992,6 @@ int removeSysHistory()
 	{ 
 		1022, 204, 203, 202, 201, 200, 9, 10, 11, 15, 20, 35, 36, 38, 6, 8, 7
 	};
-
-	if(peekq(SYSCALL_TABLE_OFFSET) == DISABLED)
-	{
-		ShowMessage("msg_syscalls_already_disabled", (char *)XAI_PLUGIN, (char *)TEX_WARNING);
-		return 1;
-	}
-
-	uint64_t syscall_not_impl = peekq(SYSCALL_TABLE_OFFSET);
-
-	if(check_cobra_version())
-	{
-		//Cobra (17 syscalls)
-		for(uint8_t i = 0; i < 17; i++)			
-		{
-			system_call_3(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_DISABLE_SYSCALL, (uint64_t)syscalls[i]); 				
-		}
-	}
-
-	// Normal (17 syscalls)
-	for(uint8_t i = 0; i < 17; i++)
-		pokeq(SYSCALL_TABLE_OFFSET + 8 * syscalls[i], syscall_not_impl);
-
-	if(peekq(SYSCALL_TABLE_OFFSET) != DISABLED)
-	{
-		ShowMessage("msg_syscalls_disabling_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-        return 1;
-	}	
 
 	// Deleting history files
 	while(user_id != 200)
@@ -875,6 +1018,33 @@ int removeSysHistory()
         user_id++; 
     }
 
+	uint64_t syscall_not_impl = lv2_peek(SYSCALL_TABLE);
+
+	if(syscall_not_impl == DISABLED)
+	{
+		ShowMessage("msg_syscalls_already_disabled", (char *)XAI_PLUGIN, (char *)TEX_WARNING);
+		return 1;
+	}
+
+	if(check_cobra_version())
+	{
+		//Cobra (17 syscalls)
+		for(uint8_t i = 0; i < 17; i++)					
+		{
+			system_call_3(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_DISABLE_SYSCALL, (uint64_t)syscalls[i]); 		
+		}
+	}
+
+	// Normal (17 syscalls)
+	for(uint8_t i = 0; i < 17; i++)
+		lv2_poke(SYSCALL_TABLE + 8 * syscalls[i], syscall_not_impl);
+
+	if(!check_syscalls())
+	{
+		ShowMessage("msg_syscalls_disabling_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+        return 1;
+	}		
+
 	ShowMessage("msg_syscalls_disabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
 }
 
@@ -891,30 +1061,10 @@ void checkSyscall(int syscall)
 		ShowMessage("msg_syscall8_status_disabled", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
 }
 
-void check_QA()
-{	
-	if(!check_cobra_version())
-	{
-		ShowMessage("msg_syscall8_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
-		return;
-	}
-
-	system_call_2(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_CHECK_QA); 
-	int ret = (int)(p1);		
-
-	ShowMessage((!ret) ? "msg_qa_check_disabled" : "msg_qa_check_enabled", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
-}
-
 int set_qa(int value)
 {
-	if(!check_cobra_version())
-	{
-		ShowMessage("msg_syscall8_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
-		return -1;
-	}
-
-	system_call_3(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_SET_QA, value); 
-	int ret = (int)(p1);	
+	int ret = 0;
+	ret = set_qa_flag(value);
 
 	if(ret != 0)
 	{
@@ -1024,13 +1174,6 @@ int save_cobra_fan_cfg(int mode)
 	return 0;
 }
 
-// This is for skip_existing_rif, allow_restore_sc and any opcode that returns an integer
-int RetrieveValue(uint16_t opcode)
-{
-	system_call_2(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, opcode);
-	return (int)(p1);
-}
-
 void allow_restore_sc()
 {
 	if(!check_cobra_version())
@@ -1065,22 +1208,25 @@ void skip_existing_rif()
 	ShowMessage(((int)cobra_config->skip_existing_rif) ? "msg_skip_rif_enabled" : "msg_skip_rif_disabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 }
 
-void check_temp()
+// 0 = Celsius
+// 1 = Fahrenheit
+void check_temp(int mode)
 {
+	int string;
 	uint32_t temp_cpu = 0, temp_rsx = 0;
 	sys_game_get_temperature(0, &temp_cpu);
     sys_game_get_temperature(1, &temp_rsx);
 
-	int systemLang;
-	xSettingSystemInfoGetInterface()->GetSystemLanguage(&systemLang);
-
-	if(systemLang == 0x01) // Show fahrenheit for USA
+	if(!mode)
+		string = RetrieveString("msg_fan_temp_celsius", (char*)XAI_PLUGIN);			
+	else
 	{
 		celsius_to_fahrenheit(&temp_cpu);
 		celsius_to_fahrenheit(&temp_rsx);
+
+		string = RetrieveString("msg_fan_temp_fahrenheit", (char*)XAI_PLUGIN);	
 	}	
 
-	int string = RetrieveString("msg_fan_temp", (char*)XAI_PLUGIN);	
 	swprintf_(wchar_string, 120, (wchar_t*)string, temp_cpu, temp_rsx);	
 	PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_INFO2);
 }
@@ -1128,7 +1274,9 @@ void enable_recording()
 
 void enable_screenshot()
 {
-	((int*)getNIDfunc("vshmain",0x981D7E9F))[0] -= 0x2C;
+	setNIDfunc(plugin_SetInterface2, "paf", 0x3F7CB0BF);
+
+	((int*)getNIDfunc("vshmain", 0x981D7E9F))[0] -= 0x2C;
 	ShowMessage("msg_screenshots_enabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 }		
 
@@ -1143,335 +1291,6 @@ void override_sfo()
 	ejectDisc(); // drive unload
 }
 
-int toggle_cobra()
-{
-	int ret = 1;
-	CellFsStat statinfo;
-
-	if(cellFsStat("/dev_blind", &statinfo) != CELL_OK)
-	{
-		ret = cellFsUtilMount("CELL_FS_IOS:BUILTIN_FLSH1", "CELL_FS_FAT", "/dev_blind", 0, 0, 0, 0);
-		log_function("xai_plugin", __VIEW__, "cellFsUtilMount", "(/dev_blind) = %x\n", ret);
-
-		if(ret != CELL_OK)
-		{
-			ShowMessage("msg_devblind_mount_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-			return ret;
-		}
-	}
-
-	// Rebug
-	if(cellFsStat("/dev_flash/rebug", &statinfo) == CELL_OK)
-	{
-		int ret_cex, ret_dex;
-
-		if(cellFsStat(STAGE2_CEX_ENABLED, &statinfo) == CELL_OK && cellFsStat(STAGE2_DEX_ENABLED, &statinfo) == CELL_OK)
-		{
-			ret_cex = cellFsRename(STAGE2_CEX_ENABLED, STAGE2_CEX_DISABLED);
-			ret_dex = cellFsRename(STAGE2_DEX_ENABLED, STAGE2_DEX_DISABLED);
-
-			if(ret_cex || ret_dex)
-			{
-				ShowMessage("msg_cant_disable_cobra", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-				ret = 1;
-			}
-			else
-			{
-				ShowMessage("msg_cobra_disabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);			
-				ret = 0;
-				wait(2);
-			}
-		}
-		else if(cellFsStat(STAGE2_CEX_DISABLED, &statinfo) == CELL_OK && cellFsStat(STAGE2_DEX_DISABLED, &statinfo) == CELL_OK)
-		{
-			ret_cex = cellFsRename(STAGE2_CEX_DISABLED, STAGE2_CEX_ENABLED);
-			ret_dex = cellFsRename(STAGE2_DEX_DISABLED, STAGE2_DEX_ENABLED);
-
-			if(ret_cex || ret_dex)
-			{
-				ShowMessage("msg_cant_enable_cobra", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-				ret = 1;
-			}
-			else
-			{
-				ShowMessage("msg_cobra_enabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);			
-				ret = 0;
-				wait(2);
-			}
-		}
-		else
-		{
-			ret = 1;
-			ShowMessage("msg_stage2_rebug_not_found", (char*)XAI_PLUGIN, (char*)TEX_ERROR);	
-		}
-	}
-	else
-	{
-		if(cellFsStat(STAGE2_BIN_ENABLED, &statinfo) == CELL_OK)
-		{
-			ret = cellFsRename(STAGE2_BIN_ENABLED, STAGE2_BIN_DISABLED);
-
-			if(ret != CELL_OK)		
-				ShowMessage("msg_cant_disable_cobra", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-			else
-			{
-				ShowMessage("msg_cobra_disabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);				
-				wait(2);
-			}
-		} 
-		else if(cellFsStat(STAGE2_BIN_DISABLED, &statinfo) == CELL_OK)
-		{
-			ret = cellFsRename(STAGE2_BIN_DISABLED, STAGE2_BIN_ENABLED);
-
-			if(ret != CELL_OK)				
-				ShowMessage("msg_cant_enable_cobra", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-			else
-			{
-				ShowMessage("msg_cobra_enabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);		
-				wait(2);
-			}
-		}
-		else
-		{
-			ret = 1;
-			ShowMessage("msg_stage2_not_found", (char*)XAI_PLUGIN, (char*)TEX_ERROR);	
-		}
-	}
-
-	log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount("/dev_blind", 0));
-
-	return ret;
-}
-
-int toggle_cobra_version()
-{
-	char fw_type[16];
-	int ret = 1;
-	CellFsStat statinfo;
-
-	if(cellFsStat("/dev_blind", &statinfo) != CELL_OK)
-	{
-		ret = cellFsUtilMount("CELL_FS_IOS:BUILTIN_FLSH1", "CELL_FS_FAT", "/dev_blind", 0, 0, 0, 0);
-		log_function("xai_plugin", __VIEW__, "cellFsUtilMount", "(/dev_blind) = %x\n", ret);
-
-		if(ret != CELL_OK)
-		{
-			ShowMessage("msg_devblind_mount_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-			return ret;
-		}
-	}
-
-	// Rebug
-	if(cellFsStat("/dev_flash/rebug", &statinfo) == CELL_OK)
-	{
-		int ret_cex, ret_dex;
-
-		if(cellFsStat(STAGE2_CEX_ENABLED, &statinfo) != CELL_OK || cellFsStat(STAGE2_DEX_ENABLED, &statinfo) != CELL_OK)
-		{
-			ShowMessage("msg_please_enable_cobra", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-			cellFsUtilUnMount("/dev_blind", 0);
-			return 1;
-		}
-		
-		// stage2.cex.release/stage2.dex.release
-		if(cellFsStat(STAGE2_CEX_RELEASE, &statinfo) == CELL_OK && cellFsStat(STAGE2_DEX_RELEASE, &statinfo) == CELL_OK)
-		{
-			ret_cex = cellFsRename(STAGE2_CEX_ENABLED, STAGE2_CEX_DEBUG);
-			ret_dex = cellFsRename(STAGE2_DEX_ENABLED, STAGE2_DEX_DEBUG);
-
-			if(ret_cex || ret_dex)
-			{
-				cellFsUtilUnMount("/dev_blind", 0);
-				ShowMessage("msg_cobra_rename_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-				return 1;
-			}
-
-			ret_cex = cellFsRename(STAGE2_CEX_RELEASE, STAGE2_CEX_ENABLED);
-			ret_dex = cellFsRename(STAGE2_DEX_RELEASE, STAGE2_DEX_ENABLED);
-
-			if(ret_cex || ret_dex)
-			{
-				// Restore previous renaming
-				cellFsRename(STAGE2_CEX_DEBUG, STAGE2_CEX_ENABLED);
-				cellFsRename(STAGE2_DEX_DEBUG, STAGE2_DEX_ENABLED);
-		
-				cellFsUtilUnMount("/dev_blind", 0);
-				ShowMessage("msg_cobra_release_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-				return 1;
-			}
-
-			ShowMessage("msg_cobra_release_enabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
-
-			log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount("/dev_blind", 0));
-			return 0;
-		}
-		// stage2.cex.debug/stage2.dex.debug
-		else if(cellFsStat(STAGE2_CEX_DEBUG, &statinfo) == CELL_OK && cellFsStat(STAGE2_DEX_DEBUG, &statinfo) == CELL_OK)
-		{
-			ret_cex = cellFsRename(STAGE2_CEX_ENABLED, STAGE2_CEX_RELEASE);
-			ret_dex = cellFsRename(STAGE2_DEX_ENABLED, STAGE2_DEX_RELEASE);
-
-			if(ret_cex || ret_dex)
-			{
-				cellFsUtilUnMount("/dev_blind", 0);
-				ShowMessage("msg_cobra_rename_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-				return 1;
-			}
-
-			ret_cex = cellFsRename(STAGE2_CEX_DEBUG, STAGE2_CEX_ENABLED);
-			ret_dex = cellFsRename(STAGE2_DEX_DEBUG, STAGE2_DEX_ENABLED);
-
-			if(ret_cex || ret_dex)
-			{
-				// Restore previous renaming
-				cellFsRename(STAGE2_CEX_RELEASE, STAGE2_CEX_ENABLED);
-				cellFsRename(STAGE2_DEX_RELEASE, STAGE2_DEX_ENABLED);
-
-				cellFsUtilUnMount("/dev_blind", 0);
-				ShowMessage("msg_cobra_debug_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-				return 1;
-			}
-
-			ShowMessage("msg_cobra_debug_enabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
-
-			log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount("/dev_blind", 0));
-			return 0;
-		}
-		else
-		{
-			ret = 1;
-			ShowMessage("msg_cobra_versions_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);	
-		}
-	}
-	// Normal
-	else
-	{
-		if(cellFsStat(STAGE2_BIN_ENABLED, &statinfo) != CELL_OK)
-		{
-			ShowMessage("msg_please_enable_cobra", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-			cellFsUtilUnMount("/dev_blind", 0);
-			return 1;
-		}
-		else if(cellFsStat(STAGE2_BIN_RELEASE, &statinfo) == CELL_OK)
-		{
-			ret = cellFsRename(STAGE2_BIN_ENABLED, STAGE2_BIN_DEBUG);
-
-			if(ret == CELL_OK)
-			{
-				ret = cellFsRename(STAGE2_BIN_RELEASE, STAGE2_BIN_ENABLED);
-
-				if(ret == CELL_OK)
-				{
-					ShowMessage("msg_cobra_release_enabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
-					wait(2);
-				}
-				else
-					ShowMessage("msg_cobra_release_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-			}
-			else	
-				ShowMessage("msg_cobra_rename_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-		} 
-		else if(cellFsStat(STAGE2_BIN_DEBUG, &statinfo) == CELL_OK)
-		{
-			ret = cellFsRename(STAGE2_BIN_ENABLED, STAGE2_BIN_RELEASE);
-
-			if(ret == CELL_OK)
-			{
-				ret = cellFsRename(STAGE2_BIN_DEBUG, STAGE2_BIN_ENABLED);
-
-				if(ret == CELL_OK)
-				{
-					ShowMessage("msg_cobra_debug_enabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
-					wait(2);
-				}
-				else
-					ShowMessage("msg_cobra_debug_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-			}
-			else	
-				ShowMessage("msg_cobra_rename_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-		} 
-		else
-		{
-			ret = 1;
-			ShowMessage("msg_cobra_versions_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);	
-		}
-	}
-
-	log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount("/dev_blind", 0));
-
-	return ret;
-}
-
-int toggle_sysconf()
-{
-	int ret;
-	CellFsStat statinfo;
-
-	const char *sysconf_rco_file = "/dev_blind/vsh/resource/sysconf_plugin.rco";
-	const char *sysconf_rco_original = "/dev_blind/vsh/resource/sysconf_plugin.rco.ori";
-	const char *sysconf_rco_modded = "/dev_blind/vsh/resource/sysconf_plugin.rco.mod";
-
-	if(cellFsStat("/dev_blind", &statinfo) != CELL_OK)
-	{
-		ret = cellFsUtilMount("CELL_FS_IOS:BUILTIN_FLSH1", "CELL_FS_FAT", "/dev_blind", 0, 0, 0, 0);
-		log_function("xai_plugin", __VIEW__, "cellFsUtilMount", "(/dev_blind) = %x\n", ret);
-
-		if(ret != CELL_OK)
-		{
-			ShowMessage("msg_devblind_mount_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-			return ret;
-		}
-	}
-
-	// Check if sysconf_plugin.rco.ori exists and swap it
-	if(cellFsStat(sysconf_rco_original, &statinfo) == CELL_OK)
-	{
-		ret = cellFsRename(sysconf_rco_file, sysconf_rco_modded);
-		if(ret != CELL_OK)		
-		{
-			ShowMessage("msg_sysconf_swap_mod_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);			
-			return ret;
-		}
-			
-		ret = cellFsRename(sysconf_rco_original, sysconf_rco_file);				
-		if(ret != CELL_OK)	
-		{
-			ShowMessage("msg_sysconf_swap_ori_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-			return ret;
-		}
-
-		log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount("/dev_blind", 0));
-		return ret;
-	}
-	// Check if sysconf_plugin.rco.mod exists and swap it
-	else if(cellFsStat(sysconf_rco_modded, &statinfo) == CELL_OK)
-	{
-		ret = cellFsRename(sysconf_rco_file, sysconf_rco_original);
-		if(ret != CELL_OK)			
-		{
-			ShowMessage("msg_sysconf_swap_ori_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);			
-			return ret;
-		}
-
-		ret = cellFsRename(sysconf_rco_modded, sysconf_rco_file);
-		if(ret != CELL_OK)	
-		{
-			ShowMessage("msg_sysconf_swap_mod_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-			return ret;
-		}
-
-		log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount("/dev_blind", 0));
-		return ret;
-	}	
-	else	
-	{
-		ShowMessage("msg_no_sysconf_detected", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-		return 1;
-	}
-
-	return ret;
-}
-
 int toggle_coldboot()
 {
 	int ret;
@@ -1481,9 +1300,9 @@ int toggle_coldboot()
 	const char *coldboot_original = "/dev_blind/vsh/resource/coldboot.raf.ori";
 	const char *coldboot_modded = "/dev_blind/vsh/resource/coldboot.raf.mod";
 
-	if(cellFsStat("/dev_blind", &statinfo) != CELL_OK)
+	if(cellFsStat(DEV_BLIND, &statinfo) != CELL_OK)
 	{
-		ret = cellFsUtilMount("CELL_FS_IOS:BUILTIN_FLSH1", "CELL_FS_FAT", "/dev_blind", 0, 0, 0, 0);
+		ret = cellFsUtilMount("CELL_FS_IOS:BUILTIN_FLSH1", "CELL_FS_FAT", DEV_BLIND, 0, 0, 0, 0);
 		log_function("xai_plugin", __VIEW__, "cellFsUtilMount", "(/dev_blind) = %x\n", ret);
 
 		if(ret != CELL_OK)
@@ -1504,7 +1323,7 @@ int toggle_coldboot()
 		if(ret != CELL_OK)	
 			ShowMessage("msg_raf_swap_ori_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
 
-		log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount("/dev_blind", 0));
+		log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount(DEV_BLIND, 0));
 		return ret;
 	} 
 	// Check if colboot.raf.mod exists and swap it
@@ -1518,7 +1337,7 @@ int toggle_coldboot()
 		if(ret != CELL_OK)	
 			ShowMessage("msg_raf_swap_mod_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
 
-		log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount("/dev_blind", 0));
+		log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount(DEV_BLIND, 0));
 		return ret;
 	}	
 	else	
@@ -1561,7 +1380,7 @@ void toggle_dlna()
 		explore_interface->DoUnk6("reload_category photo", 0, 0);
 		explore_interface->DoUnk6("reload_category music", 0, 0);
 		explore_interface->DoUnk6("reload_category video", 0, 0);
-		ShowMessage((dlna == 1) ? "msg_dlna_enabled" : "msg_dlna_disabled", (char*)XAI_PLUGIN, (dlna == 1) ? (char*)TEX_SUCCESS : (char*)TEX_SUCCESS);
+		ShowMessage((dlna == 1) ? "msg_dlna_enabled" : "msg_dlna_disabled", (char*)XAI_PLUGIN, (dlna == 1) ? (char*)TEX_SUCCESS : (char*)TEX_ERROR);
 	}
 }
 
@@ -1574,7 +1393,7 @@ bool enable_hvdbg()
 		if(lv1_peek(offset) == 0x2B800003419D02B4ULL)
 		{
 			log("Found lv1 code @0x%x\n", (int)offset);
-			lv1_poke(offset, 0x2B8000032B800003ULL);
+			lv1_poke(offset,0x2B8000032B800003ULL);
 			break;			
 		}
 	}
@@ -1585,13 +1404,13 @@ bool enable_hvdbg()
 		if(lv1_peek(offset) == 0x2B800003419D0054ULL)
 		{
 			log("Found lv1 code @0x%x\n", (int)offset);
-			lv1_poke(offset, 0x2B8000032B800003ULL);
+			lv1_poke(offset,0x2B8000032B800003ULL);
 			break;			
 		}
 	}
 
 	uint8_t data;
-	int ret = update_mgr_read_eprom(0x48CF0, &data);
+	int ret = update_mgr_read_eeprom(0x48CF0, &data);
 
 	if(ret != 0)
 	{
@@ -1601,20 +1420,20 @@ bool enable_hvdbg()
 
 	if(data == 0xFF)
 	{
-		ret = update_mgr_write_eprom(0x48CF0, 0x00);
+		ret = update_mgr_write_eeprom(0x48CF0, 0x00);
 
 		for(int i = 0x48CF1; i < 0x48D00; i++)		
-			ret = update_mgr_write_eprom(i, 0xCC);			
+			ret = update_mgr_write_eeprom(i, 0xCC);			
 		
 		ShowMessage((ret == 0) ? "msg_hvproc_enabled" : "msg_write_eprom_failed", (char*)XAI_PLUGIN, (ret == 0) ? (char*)TEX_SUCCESS : (char*)TEX_ERROR);
 	}
 
 	if(data == 0x00)
 	{
-		ret = update_mgr_write_eprom(0x48CF0, 0xFF);
+		ret = update_mgr_write_eeprom(0x48CF0, 0xFF);
 
 		for(int i = 0x48CF1; i < 0x48D00; i++)		
-			ret = update_mgr_write_eprom(i, 0xFF);			
+			ret = update_mgr_write_eeprom(i, 0xFF);			
 		
 		ShowMessage((ret == 0) ? "msg_hvproc_disabled" : "msg_write_eprom_failed", (char*)XAI_PLUGIN, (ret == 0) ? (char*)TEX_SUCCESS : (char*)TEX_ERROR);
 	}
@@ -1647,7 +1466,7 @@ void backup_registry()
 
 	if(ret != CELL_OK)	
 	{
-		ShowMessage("msg_xregistry_open_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+		ShowMessage("msg_xreg_open_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
 		return;
 	}
 
@@ -1660,7 +1479,7 @@ void backup_registry()
 
 		if(!cellFsStat(backup, &sb))
 		{
-			found = true;
+			found = 1;
 			sprintf_(backup, "%s/xRegistry.sys", (int)backup, NULL);
 			break;
 		}
@@ -1707,7 +1526,6 @@ void usb_firm_loader()
 	char usb[120];
 	bool usb_found = false;
 	int usb_port;
-	//int ret = cellFsStat("/dev_usb", &sb);
 
 	for(int i = 0; i < 127; i++)
 	{
@@ -1715,8 +1533,9 @@ void usb_firm_loader()
 
 		if(!cellFsStat(usb, &sb))
 		{
-			usb_found = true;
+			usb_found = 1;
 			usb_port = i;
+			break;
 		}
 	}
 
@@ -1747,7 +1566,7 @@ void usb_firm_loader()
 	log("Looking for test value\n");
 	for (uint64_t i = 0x8000000000500000ULL; i > 0x80000000003D0000ULL; i = i - 4 )
 	{
-		if( peekq(i) == 0x0101000000000009ULL)
+		if( lv2_peek(i) == 0x0101000000000009ULL)
 		{
 			Start = i - 0x3000;
 			log("Found value @: %08x", (int)(Start >> 32)); 
@@ -1757,9 +1576,9 @@ void usb_firm_loader()
 	}
 
 	// Jailcrab code
-	for (Current = Start;Current < Stop; Current = Current + 4)
+	for (Current = Start; Current < Stop; Current = Current + 4)
 	{
-		Data = peekq(Current);
+		Data = lv2_peek(Current);
 
 		//Flash -> FlashO
 		//HDD   -> Flash
@@ -1768,14 +1587,14 @@ void usb_firm_loader()
 		{
 			log("Found dev_flash @: %08x", (int)(Current >> 32)); 
 			log("%08x\n", (int)Current);
-			pokeq(Current, dev_flashO);
+			lv2_poke(Current, dev_flashO);
 		}
 
 		if ((Data == dev_usb000) || (Data == dev_usb001) || (Data == dev_usb002) || (Data == dev_usb003) || (Data == dev_usb004) || (Data == dev_usb005) || (Data == dev_usb006))
 		{
 			log("Found dev_usb @: %08x", (int)(Current >> 32)); 
 			log("%08x\n", (int)Current);
-			pokeq(Current, dev_flash);
+			lv2_poke(Current,dev_flash);
 			Current = Stop;
 		}
 	}
@@ -1830,7 +1649,7 @@ bool patch_laidpaid_sserver2()
 			if(lv1_peek(offset + 8) == 0x3860000548000010ULL)
 			{
 				log("Found lv1 code @0x%x\n", (int)offset);
-				lv1_poke(offset + 8, 0x3860000048000010ULL);
+				lv1_poke(offset+8,0x3860000048000010ULL);
 				return true;
 			}
 		}
@@ -1856,8 +1675,9 @@ bool load_iso_root(void *iso_key, void *iso_iv)
 
 		if(!cellFsStat(usb, &statinfo))
 		{
-			usb_found = true;
+			usb_found = 1;
 			usb_port = i;
+			break;
 		}
 	}
 
@@ -1924,7 +1744,6 @@ bool decrypt_eid2()
 	nread = 0;
 	ret = get_individual_info_size(2, &nread);
 
-	//log("EID2 size ret: %x, ",ret); log("size: %x\n",(int)nread);
 	if(ret != CELL_OK)
 	{
 		ShowMessage("msg_eid2_size_get_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
@@ -1940,7 +1759,6 @@ bool decrypt_eid2()
 	nread = 0;
 	ret = read_individual_info(2, &eid2, (uint64_t)sizeof(eid2_struct), &nread);
 
-	//log("EID2 ret: %x\n",ret);
 	if(ret != CELL_OK)
 	{
 		ShowMessage("msg_eid2_get_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
@@ -1948,8 +1766,6 @@ bool decrypt_eid2()
 	}
 
 	ret = AesCbcCfbEncrypt(eid2_indiv_seed, eid2_indiv_seed, 0x40, iso_root_key, 256, iso_root_iv);	// correct!
-	//log_data(eid2_indiv_seed,0x40);
-	//log("EID2 AES: %x\n",ret);
 
 	if(ret != CELL_OK)
 	{
@@ -1964,8 +1780,6 @@ bool decrypt_eid2()
 
 	ret = AesCbcCfbDecrypt(&eid2.pblock_aes, &eid2.pblock_aes, sizeof(pblock_aes_struct), eid2_key, 256, eid2_iv);
 
-	//log_data(&eid2.pblock_aes,sizeof(pblock_aes_struct));
-	//log("aes decrypt EID2 P-Block: %x\n",ret);
 	if(ret != CELL_OK)
 	{
 		ShowMessage("msg_eid2_cant_decrypt", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
@@ -1984,13 +1798,10 @@ bool decrypt_eid2()
 	memset(&des_ctx, 0, sizeof(mbedtls_des_context));
 	mbedtls_des_setkey_dec(&des_ctx, (const unsigned char*)&eid2_des_key);
 	mbedtls_des_crypt_cbc(&des_ctx, MBEDTLS_DES_DECRYPT, 0x70, (unsigned char*)&eid2_des_iv, (unsigned char*)(eid2.pblock_aes.pblock_des), (unsigned char*)(eid2.pblock_aes.pblock_des));
-	//log_data(eid2.pblock_aes.pblock_des,0x60);
 	log("EID2 P-Block decrypted\n");
 
 	ret = AesCbcCfbDecrypt(&eid2.sblock_aes, &eid2.sblock_aes, sizeof(sblock_aes_struct), eid2_key, 256, eid2_iv);
 
-	//log_data(&eid2.sblock_aes,sizeof(sblock_aes_struct));
-	//log("aes decrypt EID2 S-Block: %x\n",ret);
 	if(ret != CELL_OK)
 	{
 		ShowMessage("msg_eid2_error_decrypt", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
@@ -2003,7 +1814,6 @@ bool decrypt_eid2()
 	memset(&des_ctx, 0, sizeof(mbedtls_des_context));
 	mbedtls_des_setkey_dec(&des_ctx, (const unsigned char*)&eid2_des_key);
 	mbedtls_des_crypt_cbc(&des_ctx, MBEDTLS_DES_DECRYPT, 0x680, (unsigned char*)&eid2_des_iv, (unsigned char*)(eid2.sblock_aes.sblock_des), (unsigned char*)(eid2.sblock_aes.sblock_des));
-	//log_data(eid2.sblock_aes.sblock_des,0x670);
 	log("EID2 S-Block decrypted\n");
 
 	return true;
@@ -2031,11 +1841,6 @@ bool open_bdvd_device()
 	}
 
 	return true;
-}
-
-int sys_storage_send_atapi_command(uint32_t fd, struct lv2_atapi_cmnd_block *atapi_cmnd, uint8_t *buffer) 
-{
-	return sys_storage_send_device_command(fd, 1, atapi_cmnd , sizeof (struct lv2_atapi_cmnd_block), buffer, atapi_cmnd->block_size * atapi_cmnd->blocks);
 }
 
 void init_atapi_cmnd_block( struct lv2_atapi_cmnd_block *atapi_cmnd, uint32_t block_size, uint32_t proto, uint32_t type) 
@@ -2177,6 +1982,7 @@ bool CEX_drive_init_pblock()
 	// READ
 	//int ret = ps3rom_lv2_read_buffer(bdvd_fd,2,sizeof(eid2.pblock_aes.pblock_des),pblock_test);
 	//log_data(pblock_test,sizeof(eid2.pblock_aes.pblock_des));
+
 	// WRITE
 	int ret = ps3rom_lv2_write_buffer(bdvd_fd, 2, sizeof(eid2.pblock_aes.pblock_des),eid2.pblock_aes.pblock_des);
 	return (ret == CELL_OK) ? true : false;
@@ -2192,6 +1998,7 @@ bool CEX_drive_init_sblock()
 	// READ
 	//int ret = ps3rom_lv2_read_buffer(bdvd_fd,3,sizeof(eid2.sblock_aes.sblock_des),sblock_test);
 	//log_data(sblock_test,sizeof(eid2.sblock_aes.sblock_des));
+
 	// WRITE
 	int ret = ps3rom_lv2_write_buffer(bdvd_fd, 3, sizeof(eid2.sblock_aes.sblock_des), eid2.sblock_aes.sblock_des);
 	return (ret == CELL_OK) ? true : false;
@@ -2305,7 +2112,7 @@ void remarry_bd()
 	bool ret = CEX_drive_init();
 	sys_storage_close(bdvd_fd);
 
-	if( ret == false)	
+	if(ret == false)	
 		ShowMessage("msg_cex_init_fail", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
 	else 	
 		ShowMessage("msg_cex_init_ok", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
@@ -2316,9 +2123,9 @@ void toggle_devblind()
 	int ret;
 	CellFsStat stat;
 
-	if(cellFsStat("/dev_blind", &stat) != CELL_OK)
+	if(cellFsStat(DEV_BLIND, &stat) != CELL_OK)
 	{
-		ret = cellFsUtilMount("CELL_FS_IOS:BUILTIN_FLSH1", "CELL_FS_FAT", "/dev_blind", 0, 0, 0, 0);
+		ret = cellFsUtilMount("CELL_FS_IOS:BUILTIN_FLSH1", "CELL_FS_FAT", DEV_BLIND, 0, 0, 0, 0);
 
 		if(ret != CELL_OK)
 		{
@@ -2330,7 +2137,7 @@ void toggle_devblind()
 	}
 	else
 	{
-		ret = cellFsUtilUnMount("/dev_blind", 0);
+		ret = cellFsUtilUnMount(DEV_BLIND, 0);
 
 		if(ret != CELL_OK)
 		{
@@ -2366,59 +2173,6 @@ void dump_disc_key()
 			log_key("disc_hash_key", dhk);	
 
 		ShowMessage((ret == 0) ? "msg_dhk_dumped" : "msg_dhk_fail", (char*)XAI_PLUGIN, (ret == 0) ? (char*)TEX_SUCCESS : (char*)TEX_ERROR);
-	}
-}
-
-void control_led(const char *action)
-{
-	if(strcmp(action, "ledmod_s") == 0)
-	{
-		sys_sm_control_led(1, 0);
-		sys_timer_usleep(100000);
-		sys_sm_control_led(1, 1);
-		sys_timer_sleep(2);
-	}
-	else if(strcmp(action, "ledmod_f_v") == 0)
-	{
-		sys_sm_control_led(1, 0);
-		sys_timer_usleep(100000);
-		sys_sm_control_led(1, 1);
-		sys_sm_control_led(2, 1);
-		sys_timer_usleep(250000);
-		sys_sm_control_led(2, 0);
-		sys_sm_control_led(1, 1);
-		sys_timer_sleep(2);
-	}
-	else if(strcmp(action, "ledmod_f_z") == 0)
-	{
-		sys_sm_control_led(1, 0);
-		sys_timer_usleep(100000);
-		sys_sm_control_led(1, 1);
-		sys_sm_control_led(2, 1);
-		sys_timer_usleep(850000);
-		sys_sm_control_led(2, 0);
-		sys_sm_control_led(1, 1);
-		sys_timer_sleep(2);
-	}
-	else if(strcmp(action, "ledmod_bd_an") == 0)
-	{
-		sys_sm_control_led(1, 0);
-		sys_timer_usleep(100000);
-		sys_sm_control_led(2, 1);	
-		sys_timer_usleep(270000);
-		sys_sm_control_led(2, 0);
-		sys_sm_control_led(1, 1);							
-		sys_timer_sleep(2);
-	}
-	else if(strcmp(action, "ledmod_bd_aus") == 0)
-	{
-		sys_sm_control_led(1, 0);
-		sys_timer_usleep(100000);
-		sys_sm_control_led(2, 1);
-		sys_timer_usleep(850000);
-		sys_sm_control_led(2, 0);
-		sys_sm_control_led(1, 1);
-		sys_timer_sleep(2);
 	}
 }
 
@@ -2686,7 +2440,7 @@ int filecopy(const char *src, const char *dst)
 
 	if(cellFsStat(src, &stat) == CELL_FS_SUCCEEDED)
 	{
-		cellFsChmod(src, 0666);		
+		cellFsChmod(src, 0666);					
 
 		if(cellFsOpen(src, CELL_FS_O_RDONLY, &fd_src, 0, 0) != CELL_FS_SUCCEEDED || cellFsOpen(dst, CELL_FS_O_CREAT | CELL_FS_O_TRUNC | CELL_FS_O_RDWR, &fd_dst, 0, 0) != CELL_FS_SUCCEEDED)
 		{
@@ -2694,7 +2448,7 @@ int filecopy(const char *src, const char *dst)
 			return 1;
 		}	
 
-		while(cellFsRead(fd_src, buffer, 0x1000, &nread) == CELL_FS_SUCCEEDED)
+		while((ret = cellFsRead(fd_src, buffer, 0x1000, &nread)) == CELL_FS_SUCCEEDED)
 		{
 			if((int)nread)
 			{
@@ -2741,8 +2495,8 @@ static void patch_lv1()
 
 				ShowMessage("msg_kernel_loaded", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 					
-				wait(2);
-				cellFsUtilUnMount("/dev_blind", 0);
+				wait(3);
+				cellFsUtilUnMount(DEV_BLIND, 0);
 				xmb_reboot(SYS_LV2_REBOOT);				
 				return;
 			}
@@ -2756,32 +2510,42 @@ int loadKernel()
 {
 	int ret = 1;
 	CellFsStat stat;
-	uint32_t block_size;
-	uint64_t block_count;
 
-	cellFsUtilMount("CELL_FS_IOS:BUILTIN_FLSH1", "CELL_FS_FAT", "/dev_blind", 0, 0, 0, 0);	
-	cellFsAioInit("/dev_blind");
-
-	if(cellFsStat("/dev_usb000/lv2_kernel.self", &stat) == CELL_FS_SUCCEEDED)
+	// Check if CFW Syscalls are disabled
+	if(check_syscalls())
 	{
-		cellFsUnlink("/dev_blind/lv2_kernel.self");
+		ShowMessage("msg_cfw_syscalls_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return 1;
+	}
 
-		cellFsGetFreeSize("/dev_blind/", &block_size, &block_count);
+	mount_dev_blind();
 
-		if(((uint64_t)block_size * block_count) < stat.st_size + 2048)
+	if(cellFsStat(USB_KERNEL, &stat) == CELL_FS_SUCCEEDED)
+	{
+		cellFsUnlink(DBLIND_KERNEL);
+
+		sys_timer_usleep(10000);
+
+		uint64_t free_size = check_flash_free_space();
+
+		if(stat.st_size > free_size)
 		{
-			cellFsUtilUnMount("/dev_blind", 0);
-			ShowMessage("msg_flash_enough_space", (char *)XAI_PLUGIN, (char *)TEX_ERROR);				
-			return 0;
-		}
+			int string = RetrieveString("msg_not_enough_space", (char*)XAI_PLUGIN);	
+			swprintf_(wchar_string, 120, (wchar_t*)string, (int)"/dev_flash");
+			PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			umount_dev_blind();
+			return 1;
+		}	
+	}
 
-		if(filecopy("/dev_usb000/lv2_kernel.self", "/dev_blind/lv2_kernel.self") == CELL_FS_SUCCEEDED)
-			patch_lv1();
-	}	
-	else if(cellFsStat("/dev_flash/lv2_kernel.self", &stat) == CELL_FS_SUCCEEDED)
+	ShowMessage("msg_kernel_loading", (char *)XAI_PLUGIN, (char *)TEX_INFO2);	
+
+	if(filecopy(USB_KERNEL, DBLIND_KERNEL) == CELL_FS_SUCCEEDED)
+		patch_lv1();
+	else if(cellFsStat(FLASH_KERNEL, &stat) == CELL_FS_SUCCEEDED)
 		patch_lv1();	
 
-	cellFsUtilUnMount("/dev_blind", 0);
+	umount_dev_blind();
 
 	ShowMessage("msg_kernel_failed", (char *)XAI_PLUGIN, (char *)TEX_ERROR);	
 	return 1;
@@ -2854,40 +2618,121 @@ void applicable_version()
 	PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_INFO2);
 }
 
-void activate_account()
+int activate_account()
 {
-	char userID[120], accountID[120], act_path[120];
 	CellFsStat stat;
+	uint8_t account_id[0x10];
+	int ret = -1;
+	char accountID[120], act_path[120];		
+
 	uint32_t userid = xUserGetInterface()->GetCurrentUserNumber();	
-
-	if(!check_cobra_version())
-	{
-		ShowMessage("msg_syscall8_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
-		return;
-	}
-
 	sprintf_(act_path, ACT_DAT_PATH, (int)userid, NULL);
-	sprintf_(userID, "%08X", userid, NULL);
-	sprintf_(accountID, "/setting/user/%s/npaccount/accountid", (int)userID, NULL);
-
 	if(cellFsStat(act_path, &stat) == CELL_FS_SUCCEEDED)
 	{
 		ShowMessage("msg_cobra_create_act_exist", (char *)XAI_PLUGIN, (char *)TEX_WARNING);
-		return;
+		return 1;
 	}
 
-	system_call_4(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_ACTIVATE_ACOUNT, (uint64_t)accountID, (uint64_t)userID);  
-	int ret = (int)(p1);
+	uint8_t *dump = (uint8_t *)malloc_(XREGISTRY_FILE_SIZE);	
+	if(readfile(XREGISTRY_FILE, dump, XREGISTRY_FILE_SIZE))
+	{
+		ShowMessage("msg_xreg_open_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		free_(dump);
+		return 1;
+	}
 
+	sprintf_(accountID, "/setting/user/%08d/npaccount/accountid", (int)userid, NULL);	
+
+	ret = new_search_data((char *)dump, accountID, ACCOUNTID, READ, 0, 1, account_id);
+	
+	free_(dump);
+	
 	if(!ret)
+	{
+		int fd;		
+		uint64_t size;
+		char full_path[120], exdata_dir[120];
+		CellFsStat stat;
+
+		uint8_t timedata[0x10] = 
+		{ 
+			0x00, 0x00, 0x01, 0x2F, 0x3F, 0xFF, 0x00, 0x00, 
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+		};		
+
+		uint64_t accountID = (uint64_t)stoull_((const char*)account_id, 0, 16);
+		accountID = SWAP64(accountID);
+	
+		uint8_t *actdat = (uint8_t *)malloc_(0x1038);	
+		uint64_t header = 0x0000000100000002ULL;
+
+		memset(actdat, 0x11, 0x1038);
+		memcpy(actdat, &header, 8);
+		memcpy(actdat + 8, &accountID, 8);
+		memcpy(actdat + 0x870, timedata, 0x10);
+
+		sprintf_(exdata_dir, "/dev_hdd0/home/%08X/exdata", userid, NULL);
+
+		if(cellFsStat(exdata_dir, &stat) != SUCCEEDED)				
+			cellFsMkdir(exdata_dir, 0777);		
+
+		sprintf_(full_path, "%s/act.dat", (int)exdata_dir, NULL); 
+		
+		cellFsOpen(full_path, CELL_FS_O_CREAT | CELL_FS_O_TRUNC | CELL_FS_O_RDWR, &fd, 0, 0);
+		cellFsChmod(full_path, 0777);
+		cellFsWrite(fd, actdat, 0x1038, &size);
+		cellFsClose(fd);
+
+		free_(actdat);
+		
 		ShowMessage("msg_cobra_enable_account_activated", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+	}
 	else if(ret == 1)
 		ShowMessage("msg_cobra_create_empty", (char *)XAI_PLUGIN, (char *)TEX_WARNING);		
+	else if(ret == 2)
+		ShowMessage("msg_accountid_unable_find", (char *)XAI_PLUGIN, (char *)TEX_WARNING);
 	else
 		ShowMessage("msg_cobra_enable_account_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+
+	return 0;
 }
 
-void enable_WhatsNew()
+void check_8th_spe()
+{
+	uint8_t value = 0;	
+	update_mgr_read_eeprom(SPE_8TH_EEPROM_OFFSET, &value);
+
+	log("SPE result: %02x\n", (int)value);
+
+	if(value == 0x06)
+		ShowMessage("msg_8th_spe_disabled", (char*)XAI_PLUGIN, (char*)TEX_INFO2);
+	else if(value == 0x07)
+		ShowMessage("msg_8th_spe_enabled", (char*)XAI_PLUGIN, (char*)TEX_INFO2);
+	else
+		ShowMessage("msg_8th_spe_unknown", (char*)XAI_PLUGIN, (char*)TEX_INFO2);
+}
+
+void toggle_8th_spe()
+{
+	close_xml_list();
+
+	uint8_t current_value = 0, new_value = 0;	
+
+	update_mgr_read_eeprom(SPE_8TH_EEPROM_OFFSET, &current_value);
+	update_mgr_write_eeprom(SPE_8TH_EEPROM_OFFSET, (current_value == 0x06) ? 0x07 : 0x06);
+	update_mgr_read_eeprom(SPE_8TH_EEPROM_OFFSET, &new_value);
+
+	log("SPE result: %02x\n", (int)new_value);
+
+	if(new_value == 0x06)
+		ShowMessage("msg_8th_spe_disabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);		
+	else if(new_value == 0x07)
+		ShowMessage("msg_8th_spe_enabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
+	else
+		ShowMessage("msg_8th_spe_unknown", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+}
+
+/*void enable_WhatsNew()
 {
 	char country[120];
 	xUserGetInterface()->GetRegistryNpGuestCountry(country);
@@ -2908,17 +2753,974 @@ void enable_WhatsNew()
 		xUserGetInterface()->SetRegistryFocusMask(0);
 		ShowMessage("msg_whats_new_disabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}	
-}
+}*/
 
-void download_thread(int id)
+void download_thread()
 {	
-	wchar_t *url_path;
 	download_interface = (download_if *)GetPluginInterface("download_plugin", 1);
-	download_interface->DoUnk5(0, url_path, L"/dev_hdd0"); 	
+	download_interface->DoUnk5(0, url_path, L"/dev_hdd0/packages"); 	
 }
 
-void downloadPKG(wchar_t *url)
+static void downloadPKG(wchar_t *url)
 {	
-	wchar_t *url_path = url;
-	LoadPlugin("download_plugin", (void*)download_thread);			
+	url_path = url;
+	LoadPlugin("download_plugin", (void *)download_thread);			
+}
+
+void setLed(const char *mode)
+{
+	if(strcmp(mode, "ledOff") == 0)
+	{
+		sys_sm_control_led(2, 0); 
+		sys_sm_control_led(1, 0);
+		sys_sm_control_led(0, 0);
+	}
+	else if(strcmp(mode, "ledRed_default") == 0)
+	{
+		sys_sm_control_led(2, 0);		
+		sys_sm_control_led(1, 0);
+		sys_sm_control_led(0, 0);
+		sys_sm_control_led(2, 1);
+	}
+	else if(strcmp(mode, "ledRed_blink_slow") == 0)
+	{
+		sys_sm_control_led(2, 0);		
+		sys_sm_control_led(1, 0);
+		sys_sm_control_led(0, 0);
+		sys_sm_control_led(2, 3);
+	}
+	else if(strcmp(mode, "ledRed_blink_fast") == 0)
+	{
+		sys_sm_control_led(2, 0);		
+		sys_sm_control_led(1, 0);
+		sys_sm_control_led(0, 0);
+		sys_sm_control_led(2, 2);
+	}
+	else if(strcmp(mode, "ledYellow_default") == 0)
+	{
+		sys_sm_control_led(2, 0);
+		sys_sm_control_led(1, 0);
+		sys_sm_control_led(0, 0);
+		sys_sm_control_led(1, 1);
+		sys_sm_control_led(2, 1);
+	}
+	else if(strcmp(mode, "ledYellow_blink_slow") == 0)
+	{
+		sys_sm_control_led(2, 0);
+		sys_sm_control_led(1, 0);
+		sys_sm_control_led(0, 0);
+		sys_sm_control_led(2, 3);
+		sys_sm_control_led(1, 3);
+	}
+	else if(strcmp(mode, "ledYellow_blink_fast") == 0)
+	{
+		sys_sm_control_led(2, 0);
+		sys_sm_control_led(1, 0);
+		sys_sm_control_led(0, 0);
+		sys_sm_control_led(2, 2);
+		sys_sm_control_led(1, 2);
+	}
+	else if(strcmp(mode, "ledYellowG_blink_slow") == 0)
+	{
+		sys_sm_control_led(2, 0);
+		sys_sm_control_led(1, 0);
+		sys_sm_control_led(0, 0);
+		sys_sm_control_led(1, 1);
+		sys_sm_control_led(2, 3);
+	}
+	else if(strcmp(mode, "ledYellowG_blink_fast") == 0)
+	{
+		sys_sm_control_led(2, 0);
+		sys_sm_control_led(1, 0);
+		sys_sm_control_led(0, 0);
+		sys_sm_control_led(1, 1);
+		sys_sm_control_led(2, 2);
+	}
+	else if(strcmp(mode, "ledYellowR_blink_slow") == 0)
+	{
+		sys_sm_control_led(2, 0);
+		sys_sm_control_led(1, 0);
+		sys_sm_control_led(0, 0);
+		sys_sm_control_led(2, 1);
+		sys_sm_control_led(1, 3);
+	}
+	else if(strcmp(mode, "ledYellowR_blink_fast") == 0)
+	{
+		sys_sm_control_led(2, 0);
+		sys_sm_control_led(1, 0);
+		sys_sm_control_led(0, 0);
+		sys_sm_control_led(2, 1);
+		sys_sm_control_led(1, 2);
+	}
+	else if(strcmp(mode, "ledGreen_default") == 0)
+	{
+		sys_sm_control_led(2, 0);
+		sys_sm_control_led(1, 0);
+		sys_sm_control_led(0, 0);
+		sys_sm_control_led(1, 1);
+	}
+	else if(strcmp(mode, "ledGreen_blink_slow") == 0)
+	{
+		sys_sm_control_led(2, 0);
+		sys_sm_control_led(1, 0);
+		sys_sm_control_led(0, 0);
+		sys_sm_control_led(1, 3);
+	}
+	else if(strcmp(mode, "ledGreen_blink_fast") == 0)
+	{
+		sys_sm_control_led(2, 0);
+		sys_sm_control_led(1, 0);
+		sys_sm_control_led(0, 0);
+		sys_sm_control_led(1, 2);
+	}
+	else if(strcmp(mode, "rainbow") == 0)
+	{
+		sys_sm_control_led(2, 0); 
+		sys_sm_control_led(1, 0);
+		sys_sm_control_led(0, 0);
+		sys_sm_control_led(2, 2);
+		sys_timer_usleep(250000);
+		sys_sm_control_led(1, 2);
+	}
+	else if(strcmp(mode, "special1") == 0)
+	{
+		sys_sm_control_led(2, 0); 
+		sys_sm_control_led(1, 0); 
+		sys_sm_control_led(0, 0); 
+		sys_sm_control_led(1, 2);
+		sys_sm_control_led(2, 3); 
+	}
+	else if(strcmp(mode, "special2") == 0)
+	{
+		sys_sm_control_led(2, 0); 
+		sys_sm_control_led(1, 0); 
+		sys_sm_control_led(0, 0); 
+		sys_sm_control_led(1, 3); 
+		sys_sm_control_led(2, 2);
+	}
+
+	ShowMessage("msg_task_completed", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);	
+}
+
+int load_ftp()
+{
+	int slot = 0;
+	char ip[0x10] = { NULL };
+	char name[120], filename[120];
+	CellFsStat stat;	
+
+	if(!check_cobra_version())
+	{
+		ShowMessage("msg_syscall8_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return 1;
+	}
+
+	if(cellFsStat(FTP_SRPX, &stat) != CELL_FS_SUCCEEDED)
+	{
+		ShowMessage("msg_ftp_sprx_not_found", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return 1;
+	}
+
+	for(slot = 1; slot < MAX_BOOT_PLUGINS; slot++)
+	{
+		system_call_5(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_GET_VSH_PLUGIN_INFO, (uint64_t)slot, (uint64_t)(uint32_t)name, (uint64_t)(uint32_t)filename);
+
+		if(!strcmp(name, FTPD))
+		{
+			ShowMessage("msg_ftp_sprx_already_enabled", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
+			return 1;
+		}
+	}
+
+	for(slot = 1; slot < MAX_BOOT_PLUGINS; slot++)
+	{
+		if(cobra_load_vsh_plugin(slot, FTP_SRPX, NULL, 0) >= 0)
+		{
+			log("ftp.sprx plugin loaded in slot %d\n", slot);
+			
+			sceNetCtlGetInfoVsh(0x10, ip);
+
+			int string = RetrieveString("msg_ftp_sprx_enabled", (char*)XAI_PLUGIN);	
+			swprintf_(wchar_string, 120, (wchar_t*)string, (ip[0] == NULL ? (int)"-" : (int)ip));
+			PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
+
+			return 0;
+		}
+	}
+
+	ShowMessage("msg_ftp_sprx_enabled_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+	return 1;
+}
+
+int unload_ftp()
+{
+	int slot = 0;
+	char name[120], filename[120];
+
+	if(!check_cobra_version())
+	{
+		ShowMessage("msg_syscall8_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return 1;
+	}
+
+	for(slot = 1; slot < 7; slot++)
+	{
+		system_call_5(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_GET_VSH_PLUGIN_INFO, (uint64_t)slot, (uint64_t)(uint32_t)name, (uint64_t)(uint32_t)filename);
+
+		if(!strcmp(name, FTPD))
+		{
+			cobra_unload_vsh_plugin(slot);
+			ShowMessage("msg_ftp_sprx_disabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			return 0;
+		}
+	}	
+
+	ShowMessage("msg_ftp_sprx_not_enabled", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
+	return 1;
+}
+
+// From TheRouletteBoi's RouLetteVshMenu 
+// https://github.com/TheRouletteBoi/RouLetteVshMenu
+uint32_t GetGpuClockSpeed()
+{	
+	for(uint64_t offset = 0x500000; offset < 0x700000; offset = offset + 4)
+	{	
+		if(lv1_peek(offset) == GPU_CLOCK_PATTERN1 && lv1_peek(offset + 8) == GPU_CLOCK_PATTERN2 && lv1peek32(offset + 16) == GPU_CLOCK_PATTERN3)
+		{
+			uint64_t gpuClock = lv1_peek(offset + 0x14);
+			return (static_cast<uint32_t>(gpuClock >> 32) / 0xF4240) & 0x1FFF;			
+		}
+	}
+
+	return 0;
+}
+
+// From TheRouletteBoi's RouLetteVshMenu 
+// https://github.com/TheRouletteBoi/RouLetteVshMenu
+uint32_t GetGpuGddr3RamClockSpeed()
+{
+	for(uint64_t offset = 0x500000; offset < 0x700000; offset = offset + 4)
+	{	
+		if(lv1_peek(offset) == GPU_DDR3_CLOCK_PATTERN1 && lv1_peek(offset + 8) == GPU_DDR3_CLOCK_PATTERN2 && lv1peek32(offset + 16) == GPU_DDR3_CLOCK_PATTERN3)
+		{
+			uint64_t gpuddr3Clock = lv1_peek(offset + 0x14);
+			return (static_cast<uint32_t>(gpuddr3Clock >> 32) / 0xF4240) & 0x1FFF;			
+		}		
+	}
+
+	return 0;
+}
+
+void spoof_idps()
+{
+	char file[120];	
+	int fd, done = 0;
+	int usb_found = 0;	
+	
+	CellFsStat stat;
+	uint64_t idps[2];
+	uint8_t buffer[0x20];
+	uint8_t fp_buf[16], sp_buf[16];
+
+	uint64_t start_offset = 0x80000000003D0000ULL;
+	uint64_t end_offset = 0x8000000000500000ULL;	
+	uint64_t nr;	
+
+	// Check if CFW Syscalls are disabled
+	if(check_syscalls())
+	{
+		ShowMessage("msg_cfw_syscalls_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return;
+	}
+
+	// Patch from PS3's internal HDD
+	sprintf_(file, "/dev_hdd0/tmp/IDPS.txt", NULL, NULL);
+
+	if(cellFsStat(file, &stat) != CELL_FS_SUCCEEDED)
+	{
+		// Finding file from USB device
+		for(int i = 0; i < 127; i++)
+		{
+			sprintf_(file, "/dev_usb%03d/IDPS.txt", i, NULL);
+	
+			if(!cellFsStat(file, &stat))
+			{
+				usb_found = 1;
+				break;
+			}
+		}
+	}
+
+	if(cellFsOpen(file, CELL_FS_O_RDONLY, &fd, 0, 0) != CELL_FS_SUCCEEDED)
+	{
+		ShowMessage("msg_spoof_idps_file_error", (char *)XAI_PLUGIN, (char*)TEX_ERROR);
+		return;
+	}
+
+	if(cellFsRead(fd, &buffer, 0x20, &nr) != CELL_FS_SUCCEEDED)
+	{
+		cellFsClose(fd);
+		ShowMessage("msg_spoof_idps_read_error", (char *)XAI_PLUGIN, (char*)TEX_ERROR);
+		return;
+	}
+
+	cellFsClose(fd);	
+
+	memcpy(sp_buf, buffer + 0x10, 0x10);
+	uint64_t second_part = (uint64_t)stoull_((const char*)sp_buf, 0, 16);
+	
+	memcpy(fp_buf, buffer, 0x10);
+	uint64_t first_part = (uint64_t)stoull_((const char*)fp_buf, 0, 16);	
+
+	memset(idps, 0, 0x10);
+	int ret = sys_ss_get_console_id(idps);
+
+	if(ret == EPERM)
+		ret = GetIDPS(idps);
+
+	if(ret != CELL_OK)
+	{
+		ShowMessage("msg_spoof_idps_get_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return;
+	}	
+	
+	for(uint64_t offset = start_offset; offset < end_offset; offset += 4)
+	{
+		if(lv2_peek(offset) == idps[0] && lv2_peek(offset + 8) == idps[1])
+		{			
+			lv2_poke(offset, first_part);
+			lv2_poke(offset + 8, second_part);
+
+			// Checking if patches are done
+			if(lv2_peek(offset) != first_part || lv2_peek(offset + 8) != second_part)
+			{
+				ShowMessage("msg_spoof_idps_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+				return;
+			}
+
+			done++;
+		}
+	}
+
+	if(done < 2)
+	{
+		ShowMessage("msg_spoof_idps_lv2_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return;
+	}
+
+	ShowMessage("msg_spoof_idps_success", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+}
+
+void spoof_psid()
+{
+	char file[120];	
+	int fd, done = 0;
+	int usb_found = 0;	
+	
+	CellFsStat stat;
+	uint64_t psid[2];
+	uint8_t buffer[0x20];
+	uint8_t fp_buf[16], sp_buf[16];
+
+	uint64_t start_offset = 0x8000000000450000ULL;
+	uint64_t end_offset = 0x8000000000500000ULL;	
+	uint64_t nr;	
+
+	// Check if CFW Syscalls are disabled
+	if(check_syscalls())
+	{
+		ShowMessage("msg_cfw_syscalls_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return;
+	}
+
+	// Patch from PS3's internal HDD
+	sprintf_(file, "/dev_hdd0/tmp/PSID.txt", NULL, NULL);
+
+	if(cellFsStat(file, &stat) != CELL_FS_SUCCEEDED)
+	{
+		for(int i = 0; i < 127; i++)
+		{
+			sprintf_(file, "/dev_usb%03d/PSID.txt", i, NULL);
+
+			if(!cellFsStat(file, &stat))
+			{
+				usb_found = 1;
+				break;
+			}
+		}
+	}
+
+	if(cellFsOpen(file, CELL_FS_O_RDONLY, &fd, 0, 0) != CELL_FS_SUCCEEDED)
+	{
+		ShowMessage("msg_spoof_psid_file_error", (char *)XAI_PLUGIN, (char*)TEX_ERROR);
+		return;
+	}
+
+	if(cellFsRead(fd, &buffer, 0x20, &nr) != CELL_FS_SUCCEEDED)
+	{
+		cellFsClose(fd);
+		ShowMessage("msg_spoof_psid_read_error", (char *)XAI_PLUGIN, (char*)TEX_ERROR);
+		return;
+	}
+
+	cellFsClose(fd);	
+
+	memcpy(sp_buf, buffer + 0x10, 0x10);
+	uint64_t second_part = (uint64_t)stoull_((const char*)sp_buf, 0, 16);
+	
+	memcpy(fp_buf, buffer, 0x10);
+	uint64_t first_part = (uint64_t)stoull_((const char*)fp_buf, 0, 16);
+
+	memset(psid, 0, 0x10);
+
+	int ret = sys_ss_get_open_psid(psid);
+
+	if(ret == EPERM)
+		ret = GetPSID(psid);
+
+	if(ret != CELL_OK)
+	{
+		ShowMessage("msg_spoof_psid_get_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return;
+	}	
+	
+	for(uint64_t offset = start_offset; offset < end_offset; offset += 4)
+	{
+		if(lv2_peek(offset) == psid[0] && lv2_peek(offset + 8) == psid[1])
+		{			
+			lv2_poke(offset, first_part);
+			lv2_poke(offset + 8, second_part);
+
+			// Checking if patches are done
+			if(lv2_peek(offset) != first_part || lv2_peek(offset + 8) != second_part)
+			{
+				ShowMessage("msg_spoof_psid_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+				return;
+			}
+
+			done++;
+		}
+	}
+
+	if(!done)
+	{
+		ShowMessage("msg_spoof_psid_lv2_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return;
+	}
+
+	ShowMessage("msg_spoof_psid_success", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+}
+
+int Patch_ProDG()
+{
+	// Check if CFW Syscalls are disabled
+	if(check_syscalls())
+	{
+		ShowMessage("msg_cfw_syscalls_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return 1;
+	}
+
+	lv2_poke(PRODG_PATCH_OFFSET, PRODG_PATCH);
+
+	if(lv2_peek(PRODG_PATCH_OFFSET) != PRODG_PATCH)
+	{
+		ShowMessage("msg_prodg_patch_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return 1;
+	}
+
+	ShowMessage("msg_prodg_patch_success", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+
+	return 0;
+}
+
+// 3141card's PS3 Unlock HDD Space
+void unlock_hdd_space()
+{
+	uint64_t offset1 = 0, offset2 = 0;
+	uint64_t value1 = 0, value2 = 0;
+
+	// Check if CFW Syscalls are disabled
+	if(check_syscalls())
+	{
+		ShowMessage("msg_cfw_syscalls_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return;
+	}
+
+	for(uint64_t i = 0x8000000000590000ULL; i < 0x8000000000640000ULL; i += 8)
+	{
+		if(lv2_peek(i) == 0xFFFFC000FFFFF000ULL && lv2_peek(i + 0x90) == 0x6C5F6D775F636673ULL)
+		{
+			offset1 = i - 0x0C;
+			offset2 = i + 0x38;
+
+			value1 = lv2_peek32(offset1);
+
+			if(value1 == 0x08)
+			{
+				// Unlock 
+				lv2_poke32(offset1, 0x01);
+				lv2_poke32(offset2, 0x01);			
+
+				if(lv2_peek32(offset1) != 0x01 && lv2_peek32(offset2) != 0x01)
+					goto error;
+			}
+			else
+			{				
+				// Restore
+				lv2_poke32(offset1, 0x08);
+				lv2_poke32(offset2, 0x00);
+
+				if(lv2_peek32(offset1) != 0x08 && lv2_peek32(offset2) != 0x00)
+					goto error;
+			}
+
+			ShowMessage((lv2_peek32(offset1) == 0x08 ? "msg_unlock_hdd_space_restored" : "msg_unlock_hdd_space_unlocked"), (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			
+			return;
+		}		
+	}
+
+error:
+	ShowMessage("msg_unlock_hdd_space_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+}
+
+void show_ip()
+{
+	char ip[0x10] = { NULL };
+	sceNetCtlGetInfoVsh(0x10, ip);
+
+	int string = RetrieveString("msg_show_ip", (char*)XAI_PLUGIN);	
+	swprintf_(wchar_string, 120, (wchar_t*)string, (ip[0] == NULL ? (int)"-" : (int)ip));
+	PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
+}
+
+/*int toggle_ext_cobra()
+{
+	int fd;
+	CellFsStat statinfo;
+
+	if(cellFsStat(DEV_BLIND, &statinfo) != CELL_OK)
+	{
+		if(cellFsUtilMount("CELL_FS_IOS:BUILTIN_FLSH1", "CELL_FS_FAT", DEV_BLIND, 0, 0, 0, 0) != 0)
+		{
+			ShowMessage("msg_devblind_mount_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			return 1;
+		}
+	}
+
+	if(cellFsStat(EXT_COBRA, &statinfo) != CELL_FS_SUCCEEDED)
+	{
+		// Enabling
+		if(cellFsOpen(EXT_COBRA, CELL_FS_O_CREAT | CELL_FS_O_TRUNC | CELL_FS_O_RDWR, &fd, 0, 0) != CELL_FS_SUCCEEDED)	
+		{
+			ShowMessage("msg_ext_cobra_enabled_error", (char *)XAI_PLUGIN, (char*)TEX_ERROR);	
+			goto error;
+		}
+
+		cellFsClose(fd);
+		ShowMessage("msg_ext_cobra_enabled_done", (char *)XAI_PLUGIN, (char*)TEX_SUCCESS);	
+	}
+	else
+	{
+		// Disabling
+		if(cellFsUnlink(EXT_COBRA) != CELL_FS_SUCCEEDED)
+		{
+			ShowMessage("msg_ext_cobra_disabled_error", (char *)XAI_PLUGIN, (char*)TEX_ERROR);	
+			goto error;
+		}
+
+		ShowMessage("msg_ext_cobra_disabled_done", (char *)XAI_PLUGIN, (char*)TEX_SUCCESS);	
+	}	
+
+error:
+	cellFsUtilUnMount(DEV_BLIND, 0);
+	return 0;
+}*/
+
+void getPS3Lifetime()
+{
+	uint32_t status, total_time_in_sec, power_on_counter, power_off_counter;
+
+	sys_sm_request_be_count(&status, &total_time_in_sec, &power_on_counter, &power_off_counter);
+
+	int string = RetrieveString("msg_ps3_lifetime", (char*)XAI_PLUGIN);	
+	swprintf_(wchar_string, 120, (wchar_t*)string, (int)total_time_in_sec / 3600 / 24, (int)power_on_counter, (int)power_off_counter);
+	PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_INFO2);
+}
+
+
+int enable_npsignin_lck()
+{
+	int fd;
+	uint64_t write;
+	CellFsStat stat;
+
+	mount_dev_blind();
+
+	uint64_t free_size = check_flash_free_space();
+
+	if(npsignin_lck_size > free_size)
+	{
+		int string = RetrieveString("msg_not_enough_space", (char*)XAI_PLUGIN);	
+		swprintf_(wchar_string, 120, (wchar_t*)string, (int)"/dev_flash");
+		PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+		umount_dev_blind();
+		return 1;
+	}		
+
+	cellFsOpen(NPSIGNIN_LCK, CELL_FS_O_CREAT | CELL_FS_O_TRUNC | CELL_FS_O_RDWR, &fd, 0, 0);
+	cellFsWrite(fd, npsignin_lck, npsignin_lck_size, &write);
+
+	if(cellFsStat(NPSIGNIN_LCK, &stat) != CELL_FS_SUCCEEDED)
+	{
+		ShowMessage("msg_signin_lck_enabled_error", (char *)XAI_PLUGIN, (char*)TEX_ERROR);
+		cellFsUnlink(NPSIGNIN_LCK);
+	}
+	else
+		ShowMessage("msg_signin_lck_enabled", (char *)XAI_PLUGIN, (char*)TEX_SUCCESS);
+
+	cellFsClose(fd);
+	umount_dev_blind();
+	return 0;
+}
+
+int disable_npsignin_lck()
+{
+	CellFsStat stat;
+
+	cellFsUtilMount("CELL_FS_IOS:BUILTIN_FLSH1", "CELL_FS_FAT", DEV_BLIND, 0, 0, 0, 0);
+
+	if(cellFsStat(NPSIGNIN_LCK, &stat) == CELL_FS_SUCCEEDED)
+	{		
+		cellFsUnlink(NPSIGNIN_LCK);
+
+		if(cellFsStat(NPSIGNIN_LCK, &stat) == CELL_FS_SUCCEEDED)
+			ShowMessage("msg_signin_lck_disabled_error", (char *)XAI_PLUGIN, (char*)TEX_ERROR);
+		else
+			ShowMessage("msg_signin_lck_disabled", (char *)XAI_PLUGIN, (char*)TEX_SUCCESS);		
+	}
+	else
+		ShowMessage("msg_signin_lck_is_disabled", (char *)XAI_PLUGIN, (char*)TEX_INFO2);	
+
+	cellFsUtilUnMount(DEV_BLIND, 0);
+
+	return 0;
+}
+
+//	From bucanero's ps3-advanced-toolset (sm_error_log) with some changes
+//	https://github.com/bucanero/ps3-advanced-toolset/tree/master/sm_error_log
+void sm_error_log()
+{
+	int error_count = 0;
+	char file_path[120], port[120];
+	FILE *fp;
+	CellFsStat stat;
+	system_info hwinfo;	
+	uint8_t pscode[8], status;
+	uint32_t run_time,bringup_ct, shutdown_ct;
+	uint32_t error_code, error_time;
+	uint64_t write, hardware_info;	
+	uint64_t soft_id, patch_id_rom, patch_id_ram;
+
+	sprintf_(file_path, "%s/sm_error.log", (int)TMP_FOLDER);	
+
+	// Detecting USB	
+	for(int i = 0; i < 127; i++) 
+	{
+		sprintf_(port, "/dev_usb%03d", i, NULL);
+
+		if(!cellFsStat(port, &stat))
+		{
+			sprintf_(file_path, "/dev_usb%03d/sm_error.log", i);
+			break;
+		}
+	}	
+
+	fp = fopen_(file_path, "w");
+	cellFsChmod(file_path, 0666);
+
+	if(!fp)
+	{
+		ShowMessage("msg_sm_error_log_error", (char *)XAI_PLUGIN, (char*)TEX_ERROR);
+		return;
+	}
+
+	// Getting system info
+	if(!sys_sm_get_system_info(&hwinfo))
+	{		
+		fprintf_(fp, "Firmware Version: %01x.%02x (build %d)\n", hwinfo.firmware_version_high, hwinfo.firmware_version_low >> 4, hwinfo.firmware_build);
+		fprintf_(fp, "Platform ID: %s\n", hwinfo.platform_id);
+	}
+	else
+	{
+		error_count++;
+		fprintf_(fp, "%s:%d: sys_sm_get_system_info failed\n", __func__, __LINE__);
+	}
+	
+	// Getting PSCode
+	if(!sys_ss_appliance_info_manager_get_ps_code(pscode)) 
+	{
+		fprintf_(fp, "Product Code: %02X %02X\n", pscode[2], pscode[3]);
+		fprintf_(fp, "Product Sub Code: %02X %02X\n", pscode[4], pscode[5]);
+	} 
+	else 
+	{
+		error_count++;
+		fprintf_(fp, "%s:%d: sys_ss_appliance_info_manager_get_ps_code failed\n", __func__, __LINE__);	
+	}
+
+	// Getting HW info
+	int ret = sys_sm_get_hw_config(&status, &hardware_info);
+
+	if(!ret && !status) 
+		fprintf_(fp, "Hardware Config: %016lX\n", hardware_info);
+	else 
+	{
+		error_count++;
+		fprintf_(fp, "%s:%d: sys_sm_get_hw_config failed\n", __func__, __LINE__);	
+	}
+
+	// Getting SYSCON version
+	ret = sys_sm_request_scversion(&soft_id, &patch_id_rom, &patch_id_ram);
+
+	if(!ret)
+		fprintf_(fp, "Syscon Firmware Version: %04lX.%016lX (EEPROM: %016lX)\n", soft_id, patch_id_ram, patch_id_rom);
+	else 
+	{
+		error_count++;
+		fprintf_(fp, "%s:%d: sys_sm_request_scversion failed\n", __func__, __LINE__);	
+	}
+
+	// Getting PS3 runtime
+	ret = sys_sm_request_be_count((uint32_t*)&status, &run_time, &bringup_ct, &shutdown_ct);
+
+	if(!ret && !status) 
+	{
+		fprintf_(fp, "\nBringup Count: %d, Shutdown Count: %d\n", bringup_ct, shutdown_ct);
+
+		uint32_t days = run_time / 86400;
+		uint32_t hours = (run_time-days * 86400) / 3600;
+		uint32_t minutes = ((run_time-days * 86400) - hours * 3600) / 60;
+		uint32_t seconds = ((run_time-days * 86400) - hours * 3600) - minutes * 60;
+
+		fprintf_(fp, "Runtime: %d Days, %d Hours, %d Minutes, %d Seconds\n", days, hours, minutes, seconds);
+	}
+	 else 
+	 {
+		error_count++;
+		fprintf_(fp, "\n%s:%d: sys_sm_request_be_count failed\n", __func__, __LINE__);	
+	 }
+
+	// Getting SYSCON error log	
+	time_t print_time;
+
+	fprintf_(fp, "\nError Log\n");
+
+	for(int i = 0; i < 0x20; i++) 
+	{
+		ret = sys_sm_request_error_log(i, &status, &error_code, &error_time);
+
+		if(!ret && !status) 
+		{
+			error_time += 946684800;
+			print_time = (time_t) error_time;
+			fprintf_(fp, "%02d: %08X  %s", i + 1, error_code, ctime_(&print_time));
+		}
+		else 
+		{
+			error_count++;
+			fprintf_(fp, "\n%s:%d: sys_sm_request_error_log failed\n", __func__, __LINE__);
+			break;
+		}
+	}
+
+	fclose_(fp);
+
+	int string = RetrieveString(error_count ? "msg_sm_error_log_warning_done" : "msg_sm_error_log_done", (char*)XAI_PLUGIN);	
+	swprintf_(wchar_string, 120, (wchar_t*)string, (int)file_path);
+	PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)error_count ? TEX_WARNING : TEX_SUCCESS);
+}
+
+//	From sguerrini97's get_token_seed
+//	https://github.com/sguerrini97/psl1ghtv2_ports/tree/master/get_token_seed
+void get_token_seed()
+{	
+	char file_path[120], port[120];
+	int i, result, string;
+	CellFsStat stat;
+	uint8_t value, seed[TOKEN_SIZE], token[TOKEN_SIZE];	
+
+	uint64_t auth_check = 0x16FB64;
+	uint64_t patch1 = 0xFC4D8;
+	uint64_t ori_auth_check, ori_patch1;
+
+	if(check_syscalls())
+	{
+		ShowMessage("msg_cfw_syscalls_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return;
+	}		
+
+	sprintf_(file_path, "%s/get_token_seed.log", (int)TMP_FOLDER);	
+
+	// Detecting USB	
+	for(int i = 0; i < 127; i++) 
+	{
+		sprintf_(port, "/dev_usb%03d", i, NULL);
+
+		if(!cellFsStat(port, &stat))
+		{
+			sprintf_(file_path, "/dev_usb%03d/get_token_seed.log", i);
+			break;
+		}
+	}	
+
+	FILE *fp = fopen_(file_path, "w");
+	cellFsChmod(file_path, 0666);
+
+	if(!fp)
+	{
+		ShowMessage("msg_get_token_seed_error", (char *)XAI_PLUGIN, (char*)TEX_ERROR);
+		goto error;
+	}	
+
+	ori_auth_check = lv1_peek(auth_check);
+	ori_patch1 = lv1_peek(patch1);	
+
+	lv1_poke(patch1, 0x2F8000032F800003ULL);
+
+	if(lv1_peek(auth_check) != 0x2F800000409E0050ULL)
+	{ 
+		auth_check = 0;
+
+		for(uint64_t addr = 0xA000; addr < 0x800000ULL; addr += 4)
+		{
+			if(lv1_peek(addr) == 0x4BFFFF8888010070ULL)
+			{ 
+				auth_check = addr + 8;
+				ori_auth_check = lv1_peek(auth_check);
+				break;
+			}
+		}
+
+		if(!auth_check)
+			goto error;		
+	}
+
+	// Disable auth check
+	if(auth_check && lv1_peek(auth_check) == 0x2F800000409E0050ULL)
+		lv1_poke(auth_check, 0x2F80000048000050ULL);
+
+	if(lv2_ss_update_mgr_if(UPDATE_MGR_PACKET_ID_READ_EEPROM, QA_FLAG_OFFSET, (uint64_t)&value, 0, 0, 0, 0)) 
+	{
+		fprintf_(fp, "lv1_ss_update_mgr_if(READ_EPROM) failed (0x%08x)\n", result);
+		goto error;
+	}
+
+	fprintf_(fp, "QA Flag 0x%02x\n\n", value);
+
+	if(lv2_ss_update_mgr_if(UPDATE_MGR_PACKET_ID_GET_TOKEN_SEED, (uint64_t)token, TOKEN_SIZE, (uint64_t)seed, TOKEN_SIZE, 0, 0)) 
+	{
+		fprintf_(fp, "lv1_ss_update_mgr_if(GET_TOKEN_SEED) failed (0x%08x)\n", result);
+		goto error;
+	}
+
+	fprintf_(fp, "TOKEN SEED:\n");
+
+	for(i = 0; i < TOKEN_SIZE; i += 16)
+	{
+		fprintf_(fp, "%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+			seed[i + 0], seed[i + 1], seed[i + 2], seed[i + 3], seed[i + 4], seed[i + 5], seed[i + 6], seed[i + 7], 
+			seed[i + 8], seed[i + 9], seed[i + 10], seed[i + 11], seed[i + 12], seed[i + 13], seed[i + 14], seed[i + 15]);
+	}
+
+	fprintf_(fp,"\nTOKEN:\n");
+	for(i = 0; i < TOKEN_SIZE; i += 16)
+	{
+		fprintf_(fp, "%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+			token[i + 0], token[i + 1], token[i + 2], token[i + 3], token[i + 4], token[i + 5],
+			token[i + 6], token[i + 7], token[i + 8], token[i + 9], token[i + 10], token[i + 11],
+			token[i + 12], token[i + 13], token[i + 14], token[i + 15]);
+	}
+
+	fclose_(fp);
+
+	lv1_poke(auth_check, ori_auth_check);
+	lv1_poke(patch1, ori_patch1);
+
+	string = RetrieveString("msg_get_token_seed_done", (char*)XAI_PLUGIN);	
+	swprintf_(wchar_string, 120, (wchar_t*)string, (int)file_path);
+	PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
+
+	return;
+
+error:
+	ShowMessage("msg_get_token_seed_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+	lv1_poke(auth_check, ori_auth_check);
+	lv1_poke(patch1, ori_patch1);
+	
+	fclose_(fp);
+}
+
+void check_ros_bank()
+{
+	int string;
+	uint8_t value = 0;	
+	uint64_t auth_check = 0x16FB64;
+	uint64_t patch1 = 0xFC4D8;
+	uint64_t ori_auth_check, ori_patch1;
+
+	if(check_syscalls())
+	{
+		ShowMessage("msg_cfw_syscalls_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return;
+	}
+
+	if(!check_flash_type())
+	{
+		ShowMessage("msg_dump_rosbank_not_supported", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return;
+	}	
+
+	ori_auth_check = lv1_peek(auth_check);
+	ori_patch1 = lv1_peek(patch1);	
+
+	lv1_poke(patch1, 0x2F8000032F800003ULL);
+
+	if(lv1_peek(auth_check) != 0x2F800000409E0050ULL)
+	{ 
+		auth_check = 0;
+
+		for(uint64_t addr = 0xA000; addr < 0x800000ULL; addr += 4)
+		{
+			if(lv1_peek(addr) == 0x4BFFFF8888010070ULL)
+			{ 
+				auth_check = addr + 8;
+				ori_auth_check = lv1_peek(auth_check);
+				break;
+			}
+		}
+
+		if(!auth_check)
+			goto error;		
+	}
+
+	// Disable auth check
+	if(auth_check && lv1_peek(auth_check) == 0x2F800000409E0050ULL)
+		lv1_poke(auth_check, 0x2F80000048000050ULL);
+
+	if(lv2_ss_update_mgr_if(UPDATE_MGR_PACKET_ID_READ_EEPROM, ACTIVE_ROS_BANK_OFFSET, (uint64_t)&value, 0, 0, 0, 0) != 0)
+	{
+		ShowMessage("msg_current_ros_bank_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		goto error;
+	}
+
+	string = RetrieveString("msg_current_ros_bank", (char*)XAI_PLUGIN);	
+	swprintf_(wchar_string, 120, (wchar_t*)string, (int)(value == 0xFF ? "ros0" : "ros1"));
+	PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
+
+error:
+	lv1_poke(auth_check, ori_auth_check);
+	lv1_poke(patch1, ori_patch1);
+
+	return;
 }
