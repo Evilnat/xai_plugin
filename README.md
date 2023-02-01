@@ -3,4 +3,4 @@ XAI Plugin - Original Source by mysis [https://www.psx-place.com/threads/custom-
 
 You can check and download the latest xai_plugin update package
 
-Updater package version: 1.00
+Updater package version: 1.1
