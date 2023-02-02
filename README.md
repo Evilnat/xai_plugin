@@ -6,3 +6,4 @@ You can check and download the latest xai_plugin update package
 Updater package version: 1.2
 
 - Updated Cobra version to 8.4
+- Use PS2 FAN Modes on PS2 Classic games
