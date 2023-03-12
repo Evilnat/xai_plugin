@@ -14,6 +14,7 @@
 #include "cfw_settings.h"
 #include "gccpch.h"
 #include "savegames.h"
+#include "qa.h"
 #include "cex2dex.h"
 
 static uint8_t eid0_key_seed[] = 
@@ -45,7 +46,6 @@ int true_dex, true_dex_dex_idps;
 uint8_t section0_eid0_dec[0xc0];
 uint8_t section0_eid0_enc_modded[0xc0];
 
-uint64_t start_flash_sector, device;
 uint32_t readlen = 0;
 uint32_t writelen = 0;
 
@@ -71,22 +71,46 @@ static int indiv_gen(uint8_t *seed0, uint8_t *indiv, uint8_t *erk)
 	return 0;
 }
 
-int recieve_eid5_idps(uint8_t output[0x10]) 
+/*
+	0x00: EID0
+	0x01: EID5
+*/
+int receive_eid_idps(int eid, uint8_t output[0x10]) 
 {
 	int dev_id;
 	
 	uint64_t disc_size = 0;		
-	device_info_t disc_info;	
-	uint16_t offset = 0x1D0;
+	device_info_t disc_info;
 
-	start_flash_sector = 0x181;
-	device = FLASH_DEVICE_NOR;
+	uint64_t start_flash_sector = 0;
+	uint64_t device = FLASH_DEVICE_NOR;
+	uint16_t offset = 0;
 
-	if(!check_flash_type())
+	if(!eid)
 	{
-		start_flash_sector = 0x20D;
-		device = FLASH_DEVICE_NAND;
+		offset = 0x70;
+		start_flash_sector = 0x178;		
+
+		if(!check_flash_type())
+		{
+			start_flash_sector = 0x204;
+			device = FLASH_DEVICE_NAND;
+		}
 	}
+	else
+	{
+		offset = 0x1D0;
+		start_flash_sector = 0x181;		
+
+		if(!check_flash_type())
+		{
+			start_flash_sector = 0x20D;
+			device = FLASH_DEVICE_NAND;
+		}
+	}
+
+	if(!offset || !start_flash_sector || !device)
+		return 1;
 
 	if(sys_storage_open(device, &dev_id))
 		return 1;
@@ -109,6 +133,9 @@ int recieve_eid5_idps(uint8_t output[0x10])
 		}		
 		
 		memcpy(output, (void*)&rb[offset], 0x10);	
+
+		if(output[0] != 0x00 && output[1] != 0x00 && output[2] != 0x00 && output[3] != 0x01 && output[4] != 0x00 && output[6] != 0x00)
+			return 1;
 	}
 	
 	sys_storage_close(dev_id);
@@ -125,8 +152,8 @@ int check_targetid(int mode)
 	uint8_t idps[IDPS_SIZE];
 	uint8_t read_buffer[0x200];	
 
-	start_flash_sector = 0x178;
-	device = FLASH_DEVICE_NOR;
+	uint64_t start_flash_sector = 0x178;
+	uint64_t device = FLASH_DEVICE_NOR;
 
 	if(!check_flash_type())
 	{
@@ -149,7 +176,7 @@ int check_targetid(int mode)
 		return targetid;
 	}
 
-	if(recieve_eid5_idps(idps))
+	if(receive_eid_idps(EID5, idps))
 		goto error;
 
 	string = RetrieveString("msg_show_eid_target", (char*)XAI_PLUGIN);	
@@ -178,18 +205,47 @@ void get_ps3_info()
 
 	int dev_id, string;
 	wchar_t wchar_string[120];
+	char target[120], vsh[120], xmb_plugin[120], sysconf_plugin[120];
 
 	uint8_t platform_info[0x18];	
 	uint8_t read_buffer[0x200];		
 
-	start_flash_sector = 376;
-	device = FLASH_DEVICE_NOR;
+	uint64_t start_flash_sector = 0x178;
+	uint64_t device = FLASH_DEVICE_NOR;
 
 	if(!check_flash_type())
 	{
-		start_flash_sector = 516;
+		start_flash_sector = 0x204;
 		device = FLASH_DEVICE_NAND;
 	}	
+
+	if(lv2_peek(CEX_OFFSET) == CEX || lv2_peek(CEX_490_OFFSET) == CEX || lv2_peek(DEX_OFFSET) == CEX)
+		strncpy(target, "CEX", 3);
+	else if(lv2_peek(DEX_OFFSET) == DEX)
+		strncpy(target, "DEX", 3);
+	else
+		strncpy(target, "???", 3);
+		
+	if(cellFsStat(VSH_SELF_CD ".dex", &stat) == CELL_FS_SUCCEEDED)
+		strncpy(vsh, "CEX", 3);
+	else if(cellFsStat(VSH_SELF_CD ".cex", &stat) == CELL_FS_SUCCEEDED)
+		strncpy(vsh, "DEX", 3);
+	else
+		strncpy(vsh, "???", 3);
+
+	if(cellFsStat(XMB_PLUGIN_CD ".dex", &stat) == CELL_FS_SUCCEEDED)
+		strncpy(xmb_plugin, "CEX", 3);
+	else if(cellFsStat(XMB_PLUGIN_CD ".cex", &stat) == CELL_FS_SUCCEEDED)
+		strncpy(xmb_plugin, "DEX", 3);
+	else
+		strncpy(xmb_plugin, "???", 3);
+
+	if(cellFsStat(SYSCONF_PLUGIN_CD ".dex", &stat) == CELL_FS_SUCCEEDED)
+		strncpy(sysconf_plugin, "CEX", 3);
+	else if(cellFsStat(SYSCONF_PLUGIN_CD ".cex", &stat) == CELL_FS_SUCCEEDED)
+		strncpy(sysconf_plugin, "DEX", 3);
+	else
+		strncpy(sysconf_plugin, "???", 3);
 
 	system_call_1(387, (uint64_t)platform_info);
 
@@ -204,18 +260,22 @@ void get_ps3_info()
 
 	string = RetrieveString("msg_ps3_information", (char*)XAI_PLUGIN);	
 
-	/*swprintf_(wchar_string, 120, (wchar_t*)string, platform_info[0], platform_info[1], platform_info[2] >> 4, 
-		lv2_peek(CEX_OFFSET) == DISABLED ? (int)"???" : (lv2_peek(CEX_OFFSET) == CEX ? (int)"CEX" : (int)"DEX"), 
-		lv2_peek(CEX_OFFSET) == DISABLED ? (int)"???" : (lv2_peek(CEX_OFFSET) == CEX ? (int)"CEX" : (int)"DEX"),
-		read_buffer[0x75] == 0x82 ? (int)"DEX" : (int)"CEX");	*/
-
 	swprintf_(wchar_string, 120, (wchar_t*)string, platform_info[0], platform_info[1], platform_info[2] >> 4, 
-		lv2_peek(CEX_OFFSET) == DISABLED ? (int)"???" : (lv2_peek(CEX_OFFSET) == CEX ? (int)"CEX" : (int)"DEX"), 
-		lv2_peek(CEX_OFFSET) == DISABLED ? (int)"???" : (lv2_peek(CEX_OFFSET) == CEX ? (int)"CEX" : (int)"DEX"),
+		(int)target, (int)target,
+		read_buffer[0x75] == 0x82 ? (int)"DEX" : (int)"CEX",
+		(int)vsh,
+		(int)xmb_plugin,
+		(int)sysconf_plugin);	
+
+	/*
+		swprintf_(wchar_string, 120, (wchar_t*)string, platform_info[0], platform_info[1], platform_info[2] >> 4, 
+		lv2_peek(CEX_OFFSET) == DISABLED ? (int)"???" : (lv2_peek(target_offset) == CEX ? (int)"CEX" : (int)"DEX"), 
+		lv2_peek(CEX_OFFSET) == DISABLED ? (int)"???" : (lv2_peek(target_offset) == CEX ? (int)"CEX" : (int)"DEX"),
 		read_buffer[0x75] == 0x82 ? (int)"DEX" : (int)"CEX",
 		cellFsStat("/dev_flash/vsh/module/vsh.self.dex", &stat) == CELL_FS_SUCCEEDED ? (int)"CEX" : (int)"DEX",
 		cellFsStat("/dev_flash/vsh/module/xmb_plugin.sprx.dex", &stat) == CELL_FS_SUCCEEDED ? (int)"CEX" : (int)"DEX",
 		cellFsStat("/dev_flash/vsh/module/sysconf_plugin.sprx.dex", &stat) == CELL_FS_SUCCEEDED ? (int)"CEX" : (int)"DEX");	
+	*/
 
 	PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_INFO2);
 
@@ -548,7 +608,7 @@ static int search_flash(uint8_t _mode)
 			{
 				log("Replacing sector in flash at 0x%X\n", (int)start_flash_sector * 0x200);
 
-				rr = sys_storage_write(dev_id, start_flash_sector, 3, read_buffer, &readlen, FLASH_FLAGS);
+				rr = sys_storage_write(dev_id, start_flash_sector, 3, read_buffer, &readlen, FLASH_FLAGS);	
 
 				if(readlen == 3 && !rr)
 					ros++;
@@ -581,6 +641,9 @@ void cex2dex(int mode)
 	uint8_t read_buffer[0x200];
 	uint8_t *eid_root_key;
 
+	uint64_t start_flash_sector;
+	uint64_t device;
+
 	CellFsStat statinfo;	
 
 	close_xml_list();
@@ -610,7 +673,7 @@ void cex2dex(int mode)
 		}		
 	}	
 	
-	if(recieve_eid5_idps(idps))
+	if(receive_eid_idps(EID5, idps))
 		goto done;
 
 	eid_root_key = (uint8_t *)malloc__(EID_ROOT_KEY_SIZE);	
@@ -635,6 +698,9 @@ void cex2dex(int mode)
 		start_flash_sector = 0x204;
 		device = FLASH_DEVICE_NAND;
 	}	
+
+	if(!start_flash_sector || !device)
+		goto done;
 	
 	if(sys_storage_open(device, &dev_id))
 		goto done;
@@ -797,6 +863,9 @@ void cex2dex(int mode)
 	cellFsUtilUnMount(DEV_BLIND, 0);
 	sys_timer_usleep(10000);
 
+	wait(3);
+	xmb_reboot(SYS_SOFT_REBOOT);
+
 	return;
 
 done:
@@ -823,7 +892,8 @@ void swap_kernel()
 
 	if(targetID == 0x82)
 	{
-		if(lv2_peek(CEX_OFFSET) == CEX && lv2_peek(0x80000000002FCB68ULL) == 0x323032322F30322FULL)
+		if(lv2_peek(CEX_OFFSET) == CEX && lv2_peek(0x80000000002FCB68ULL) == 0x323032322F30322FULL ||
+		   lv2_peek(CEX_490_OFFSET) == CEX && lv2_peek(0x80000000002FCB58ULL) == 0x323032322F31322FULL)
 		{
 			log("CEX detected, swapping to DEX...\n");
 
@@ -848,7 +918,7 @@ void swap_kernel()
 			else
 				ShowMessage("msg_swap_kernel_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 		}
-		else if(lv2_peek(DEX_OFFSET) == DEX && lv2_peek(0x800000000031F028ULL) == 0x323032332F30312FULL)
+		else if(lv2_peek(DEX_OFFSET) == DEX && (lv2_peek(0x800000000031F028ULL) == 0x323032332F30312FULL || lv2_peek(0x800000000031F028ULL) == 0x323032332F30332FULL))
 		{
 			log("DEX detected, swapping to CEX...\n");
 
@@ -895,7 +965,7 @@ int spoof_with_eid5()
 		return 1;
 	}	
 
-	if(recieve_eid5_idps(idps))
+	if(receive_eid_idps(EID5, idps))
 		return 1;
 
 	for(uint64_t offset = start_offset; offset < end_offset; offset += 4)
@@ -928,7 +998,7 @@ int spoof_with_eid5()
 	return 0;
 }
 
-int toggle_xmbplugin() // DONE
+int toggle_xmbplugin()
 {
 	CellFsStat stat;
 
@@ -974,7 +1044,7 @@ int toggle_vsh()
 		}
 	}
 
-	if(check_targetid(1) == 0x82 && lv2_peek(DEX_OFFSET) == DEX && lv2_peek(0x800000000031F028ULL) == 0x323032332F30312FULL)
+	if(check_targetid(1) == 0x82 && lv2_peek(DEX_OFFSET) == DEX && (lv2_peek(0x800000000031F028ULL) == 0x323032332F30312FULL || lv2_peek(0x800000000031F028ULL) == 0x323032332F30332FULL))
 	{
 		ShowMessage("msg_toggle_vsh_canceled", (char *)XAI_PLUGIN, (char *)TEX_INFO2);		
 		return 1;

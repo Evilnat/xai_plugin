@@ -70,6 +70,11 @@ static uint8_t syscon_manager_key[0x14] =
 	0x75, 0x14, 0x3D, 0x3B, 0xB4, 0x56, 0x52, 0x74
 };
 
+static uint8_t null_iv[] = 
+{
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
 void load_saves_functions()
 {
 	setNIDfunc(xUserGetInterface, "xsetting", 0xCC56EB2D);
@@ -94,12 +99,12 @@ int readfile(const char *file, uint8_t *buffer, size_t size)
 int savefile(const char *path, void *data, size_t size)
 {
 	int file;
-	uint64_t write;
-
-	cellFsChmod(path, 0666);
+	uint64_t write;	
 
 	if(cellFsOpen(path, CELL_FS_O_WRONLY | CELL_FS_O_CREAT | CELL_FS_O_TRUNC, &file, 0, 0) != SUCCEEDED)
 		return -1;
+
+	cellFsChmod(path, 0666);
 
 	cellFsWrite(file, data, size, &write);
 	cellFsClose(file);
@@ -414,4 +419,190 @@ int patch_savedatas(const char *path)
 	}
 	
 	return -1;
+}
+
+int export_rap()
+{	
+	int fd, ret, i, round_num, string, usb_port;
+	char exdata_path[120], actdat_path[120];
+	char license_file[120], contentID[36], USB[120];
+
+	CellFsDirent dir;	
+	CellFsStat statinfo;
+
+	struct rif_t rif;
+	struct actdat_t *actdat = NULL;	
+
+	bool usb_found = false;
+	
+	uint8_t padding[0x0C];
+	uint8_t encrypted[0x10], decrypted[0x10];
+	uint8_t idps[0x10];
+	uint8_t rifKey[0x10], rapFile[0x10];
+	uint8_t *rap_key, *klicensee;
+	uint64_t read;
+
+	wchar_t wchar_string[120];
+	int rap_created = 0;
+
+	for(int i = 0; i < 127; i++)
+	{
+		sprintf_(USB, "/dev_usb%03d", i, NULL);
+
+		if(!cellFsStat(USB, &statinfo))
+		{
+			usb_found = 1;
+			usb_port = i;
+			break;
+		}
+	}
+
+	if(!usb_found)
+	{
+		ShowMessage("msg_usb_not_detected", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
+		return 1;
+	}
+
+	if(sys_ss_get_console_id(idps) == EPERM)
+	{
+		if(GetIDPS(idps) != CELL_OK)
+		{
+			ShowMessage("msg_idps_dump_fail", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+			return 1;
+		}
+	}	
+
+	uint32_t userID = xUserGetInterface()->GetCurrentUserNumber();
+	sprintf_(exdata_path, "/dev_hdd0/home/%08d/exdata", userID, NULL);
+
+	if(!cellFsOpendir(exdata_path, &fd))
+	{
+		rap_created = 0;
+
+		while(!cellFsReaddir(fd, &dir, &read))
+		{
+			if(read == 0)
+				break;	
+
+			if (!strcmp(dir.d_name, ".") || !strcmp(dir.d_name, "..") || dir.d_type == 1)
+				continue;	
+
+			sprintf_(license_file, "%s/%s", (int)exdata_path, (int)dir.d_name);
+			int path_len = strlen(license_file);	
+
+			if(strcasecmp(license_file + path_len - 4, ".rif") != 0 || path_len != 71)
+				continue;
+
+			strncpy(contentID, license_file + 31, 40);
+			contentID[36] = '\0';
+
+			sprintf_(license_file, "/dev_hdd0/home/%08d/exdata/%s.rif", userID, (int)contentID);
+
+			log("Exporting %s.rap...\n", contentID);
+
+			if(readfile(license_file, (uint8_t *)&rif, 0x98) != CELL_FS_SUCCEEDED)
+				goto error;
+
+			sprintf_(actdat_path, ACT_DAT_PATH, userID); 
+			actdat = (struct actdat_t*)malloc__(0x1038);
+
+			if(!actdat)
+				goto error;
+
+			if(readfile(actdat_path, (uint8_t *)actdat, 0x1038) != CELL_FS_SUCCEEDED)
+			{
+				ShowMessage("msg_account_act_not_found", (char*)XAI_PLUGIN, (char*)TEX_ERROR);	
+				goto error;
+			}
+
+			ret = AesCbcCfbDecrypt(rif.padding, rif.padding, 0x10, rif_key_const, 128, null_iv);
+			ret |= AesCbcCfbEncrypt(encrypted, idps_const, 0x10, idps, 128, null_iv);
+			ret |= AesCbcCfbDecrypt(decrypted, &actdat->keyTable[rif.actDatIndex * 0x10], 0x10, encrypted, 128, null_iv);
+			ret |= AesCbcCfbDecrypt(rifKey, rif.key, 0x10, decrypted, 128, null_iv);
+
+			if(ret)
+				goto error;
+
+			// Converting KLICENSEE to RAP
+			uint8_t key[0x10];
+			memset(key, 0, 0x10);
+			memcpy(key, rifKey, 0x10);			
+
+			for (round_num = 0; round_num < 5; ++round_num) 
+			{
+			   int o = 0;
+			   for (i = 0; i < 16; ++i) 
+			   {
+				  int p = pbox[i];
+				  uint8_t ec2 = e2[p];
+				  uint8_t kc = key[p] + ec2;
+				  key[p] = kc + (uint8_t)o;
+				  if (o != 1 || kc != 0xFF) 
+					 o = kc < ec2 ? 1 : 0;
+			   }
+
+			   for (i = 1; i < 16; ++i) 
+			   {
+				  int p = pbox[i];
+				  int pp = pbox[i - 1];
+				  key[p] ^= key[pp];
+			   }
+
+			   for (i = 0; i < 16; ++i) 
+				  key[i] ^= e1[i];
+			}			
+   
+			if(AesCbcCfbEncrypt(rap_key, key, 0x10, rap_initial_key, 128, null_iv) != SUCCEEDED)
+				goto error;
+
+			sprintf_(license_file, "%s/exdata/%s.rap", (int)USB, (int)contentID);
+			if(savefile(license_file, rap_key, 0x10) != 0)
+			{
+				error:
+				free__(actdat);
+				cellFsClosedir(fd);
+
+				sprintf_(license_file, "%s.rap", (int)contentID);
+				string = RetrieveString("msg_rif_create_error", (char*)XAI_PLUGIN);	
+				swprintf_(wchar_string, 120, (wchar_t*)string, (int)license_file);
+				PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+
+				if(rap_created > 1)
+				{
+					string = RetrieveString("msg_rifs_created", (char*)XAI_PLUGIN);	
+					swprintf_(wchar_string, 120, (wchar_t*)string, rap_created);
+					PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+				}
+				else
+					ShowMessage("msg_rif_created", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+
+				log("Error while exporting %s\n", license_file);
+
+				return 1;
+			}
+
+			free__(actdat);
+			rap_created++;
+		}
+
+		if(rap_created)
+		{
+			cellFsClosedir(fd);
+
+			if(rap_created > 1)
+			{
+				string = RetrieveString("msg_rifs_created", (char*)XAI_PLUGIN);	
+				swprintf_(wchar_string, 120, (wchar_t*)string, rap_created);
+				PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
+			}
+			else
+				ShowMessage("msg_rif_created", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);	
+
+			return 0;
+		}
+	}
+
+	ShowMessage("msg_rif_not_found", (char*)XAI_PLUGIN, (char*)TEX_ERROR);	
+	cellFsClosedir(fd);
+	return 0;
 }

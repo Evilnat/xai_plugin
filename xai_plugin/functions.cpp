@@ -8,6 +8,7 @@
 #include "log.h"
 #include "cfw_settings.h"
 #include "otheros.h"
+#include "savegames.h"
 
 int mount_dev_blind()
 {
@@ -115,8 +116,9 @@ int sys_storage_send_device_command(int device_handle, unsigned int command, voi
 
 uint32_t celsius_to_fahrenheit(uint32_t *temp)
 {
-	*temp = ((uint32_t)(*temp * 9 / 5) + 32);
-	return *temp;
+	uint32_t f_temp = 0;
+	f_temp = ((uint32_t)(*temp * 9 / 5) + 32);
+	return f_temp;
 }
 
 int sys_game_get_temperature(int sel, uint32_t *temperature) 
@@ -145,7 +147,12 @@ uint64_t lv1_peek(uint64_t addr)
 	return_to_user_prog(uint64_t);
 }
 
-uint32_t lv1peek32(uint64_t addr) 
+uint8_t lv1_peek8(uint64_t addr) 
+{
+	return (lv1_peek(addr) >> 56) & 0xFFUL;
+}
+
+uint32_t lv1_peek32(uint64_t addr) 
 {
 	return (lv1_peek(addr) >> 32) & 0xFFFFFFFFUL;
 }

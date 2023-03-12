@@ -1,3 +1,7 @@
+/*
+	From Habib Toolbox with some changes added
+*/
+
 #include <stdio.h>
 #include <string.h>
 #include <cell/fs/cell_fs_file_api.h>
@@ -71,7 +75,8 @@ int set_qa_flag(uint8_t value)
 	uint8_t seed[TOKEN_SIZE];
 	uint8_t token[TOKEN_SIZE];	
 
-	recieve_eid5_idps(idps);	
+	if(receive_eid_idps(EID5, idps))
+		return 5;
 
 	memset(seed, 0, TOKEN_SIZE);
 	memcpy(seed + 4, idps, IDPS_SIZE);

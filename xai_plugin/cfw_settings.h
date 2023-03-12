@@ -217,8 +217,9 @@ int save_ps2_fan_cfg(int mode);
 
 void allow_restore_sc();
 void skip_existing_rif();
+void toogle_PS2_disc_icon();
 
-void check_temp(int mode);
+void check_temp();
 
 void clean_log();
 void log_klic();
@@ -269,7 +270,7 @@ void toggle_8th_spe();
 
 //void enable_WhatsNew();
 
-void getClockSpeeds();
+int getClockSpeeds();
 
 void setLed(const char *mode);
 
@@ -277,10 +278,6 @@ void close_xml_list();
 
 int load_ftp();
 int unload_ftp();
-
-uint32_t GetCpuClockSpeed();
-uint32_t GetGpuClockSpeed();
-uint32_t GetGpuGddr3RamClockSpeed();
 
 void spoof_idps();
 void spoof_psid();

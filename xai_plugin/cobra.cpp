@@ -53,21 +53,25 @@ int sys_get_version(uint32_t *version)
 int sys_get_version2(uint16_t *version)
 {
     system_call_2(8, SYSCALL8_OPCODE_GET_VERSION2, (uint32_t)version);
-	//system_call_3(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_GET_COBRA_VERSION, (uint32_t)version);  	
-	
     return_to_user_prog(uint16_t);
 }
 
 int cobra_load_vsh_plugin(int slot, char *path, void *arg, uint32_t arg_size)
 {
 	system_call_5(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_LOAD_VSH_PLUGIN, slot, (uint64_t)(uint32_t)path, (uint64_t)(uint32_t)arg, arg_size);
-	return (int)p1;
+	return_to_user_prog(int);
 }
 
-int cobra_unload_vsh_plugin(int slot)
+int ps3mapi_unload_vsh_plugin(char* name)
 {
-	system_call_2(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_UNLOAD_VSH_PLUGIN, slot);
-	return (int)p1;
+	system_call_3(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_UNLOAD_VSH_PLUGIN, (uint64_t)name);
+	return_to_user_prog(int);
+}
+
+int ps3mapi_get_vsh_plugin_info(unsigned int slot, char *name, char *filename)
+{
+	system_call_5(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_GET_VSH_PLUGIN_INFO, (uint64_t)slot, (uint64_t)name, (uint64_t)filename);	
+	return_to_user_prog(int);
 }
 
 void toggle_plugins()

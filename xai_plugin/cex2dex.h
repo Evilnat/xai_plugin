@@ -19,12 +19,19 @@
 #define SOFTWARE_UPDATE_SPRX_CEX		"/dev_blind/vsh/module/software_update_plugin.sprx.cex"
 #define SOFTWARE_UPDATE_SPRX_DEX		"/dev_blind/vsh/module/software_update_plugin.sprx.dex"
 
+
+
+#define VSH_SELF_CD			"/dev_flash/vsh/module/vsh.self"
+#define XMB_PLUGIN_CD		"/dev_flash/vsh/module/xmb_plugin.sprx"
+#define SYSCONF_PLUGIN_CD	"/dev_flash/vsh/module/sysconf_plugin.sprx"
+
 #define FLASH_DEVICE_NAND	0x0100000000000001ULL
 #define FLASH_DEVICE_NOR	0x0100000000000004ULL
 #define FLASH_FLAGS			0x22ULL
 
 #define DEX_OFFSET			0x800000000030F3B0ULL
 #define CEX_OFFSET			0x80000000002ED818ULL
+#define CEX_490_OFFSET		0x80000000002ED808ULL
 
 #define CEX					0x4345580000000000ULL
 #define DEX					0x4445580000000000ULL
@@ -46,7 +53,10 @@
 #define CEX_TO_DEX			0
 #define DEX_TO_CEX			1
 
-int recieve_eid5_idps(uint8_t output[0x10]);
+#define EID0				0
+#define EID5				1
+
+int receive_eid_idps(int eid, uint8_t output[0x10]);
 int check_targetid(int mode);
 void get_ps3_info();
 int dump_flash();

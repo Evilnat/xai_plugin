@@ -133,6 +133,7 @@
 #define PS3MAPI_OPCODE_CREATE_CFW_SYSCALLS				0x0095
 #define PS3MAPI_OPCODE_ALLOW_RESTORE_SYSCALLS			0x0096
 #define PS3MAPI_OPCODE_GET_RESTORE_SYSCALLS				0x0097
+#define PS3MAPI_OPCODE_SWAP_PS2_ICON_COLOR 				0x0098
 #define PS3MAPI_OPCODE_REMOVE_HOOK						0x0101
 #define PS3MAPI_OPCODE_SUPPORT_SC8_PEEK_POKE			0x1000
 #define PS3MAPI_OPCODE_LV2_PEEK							0x1006
@@ -184,6 +185,7 @@ typedef struct
 	uint8_t ps2_speed;			// 1 = SYSCON | 0x60 | 0x70 | 0x80 | 0x90
 	uint8_t allow_restore_sc; 	// 0 = Does not allow to restore CFW syscalls | 1 = Allow to restore CFW syscalls 
 	uint8_t skip_existing_rif;  // 0 = Does not skip if .rif already exists | 1 = Skip if .rif already exists
+	uint8_t color_disc; 	   // 0 = Default (PS2 CD/DVD: blue disc icon) | 1 = (PS2 DVD: yellow disc icon - PS2 CD: blue disc icon)
 } __attribute__((packed)) CobraConfig;
 
 int check_syscall8();
@@ -198,7 +200,8 @@ int sys_get_version2(uint16_t *version);
 void toggle_plugins();
 
 int cobra_load_vsh_plugin(int slot, char *path, void *arg, uint32_t arg_size);
-int cobra_unload_vsh_plugin(int slot);
+int ps3mapi_unload_vsh_plugin(char* name);
+int ps3mapi_get_vsh_plugin_info(unsigned int slot, char *name, char *filename);
 
 #endif /* _COBRA_H */
 

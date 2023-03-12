@@ -51,8 +51,6 @@ static int (*cellCryptoPuSha1HmacInit)(uint64_t data[160], uint8_t *key, int32_t
 static int (*cellCryptoPuSha1HmacTransform)(uint64_t data[160], uint8_t *data_in, int32_t data_length) = 0;
 static int (*cellCryptoPuSha1HmacFinal)(uint8_t *hmac_hash, uint64_t data[160]) = 0;
 
-static int (*getPadBattery)(int portNo, uint8_t *status_level) = 0;
-
 static int (*update_mgr_read_eprom)(int offset, void *buffer);      
 static int (*update_mgr_write_eprom)(int offset, int value);
 static int (*vshmain_74A54CBF)(int r3) = 0;

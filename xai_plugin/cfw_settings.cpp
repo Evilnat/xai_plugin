@@ -572,27 +572,58 @@ int getAccountID()
 	return 1;
 }
 
-void getClockSpeeds()
+int getClockSpeeds()
 {
+	char rsxData[120];
+	char core[25], memory[25];
+	uint8_t hex[8];
+	uint64_t rsx_values = 0;
+
 	// Check if CFW Syscalls are disabled
 	if(check_syscalls())
 	{
 		ShowMessage("msg_cfw_syscalls_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
-		return;
+		return 1;
 	}
 
-	uint32_t gpu_Clock = GetGpuClockSpeed();
-	uint32_t gpuddr3_Clock = GetGpuGddr3RamClockSpeed();
+	ShowMessage("msg_rsx_clock_freq_wait", (char*)XAI_PLUGIN, (char*)TEX_INFO2);	
 
-	if(!gpu_Clock || !gpuddr3_Clock)
+	for(uint64_t offset = 0x600000; offset < 0x700000; offset++)
+	{
+		if(lv1_peek32(offset) == 0x7670653A && 
+		  (lv1_peek32(offset + 7) == 0x7368643A || lv1_peek32(offset + 8) == 0x7368643A) && 
+		   lv1_peek8(offset - 5) == 0x2F)
+		{
+			rsx_values = lv1_peek(offset - 8);
+			break;	
+		}
+	}
+
+	if(!rsx_values)
+	{
+		ShowMessage("msg_clock_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+		return 1;
+	}
+
+	memcpy(hex, &rsx_values, 8);
+
+	for(int i = 0; i < 8; i++)
+      sprintf_(&rsxData[i], "%c", hex[i]);
+
+	strncpy(core, rsxData, 3);
+	strncpy(memory, rsxData + 4, 3);
+
+	/*if(core[0] == '\0' || !memory[0] == '\0')
 	{		
 		ShowMessage("msg_clock_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-		return;
-	}
+		return 1;
+	}*/
 
 	int string = RetrieveString("msg_clock_speeds", (char*)XAI_PLUGIN);	
-	swprintf_(wchar_string, 120, (wchar_t*)string, (uint32_t)gpu_Clock, gpuddr3_Clock);	
+	swprintf_(wchar_string, 120, (wchar_t*)string, (int)core, (int)memory);	
 	PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_INFO2);
+
+	return 0;
 }
 
 void changeAccountID(int mode, int force)
@@ -1208,26 +1239,38 @@ void skip_existing_rif()
 	ShowMessage(((int)cobra_config->skip_existing_rif) ? "msg_skip_rif_enabled" : "msg_skip_rif_disabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 }
 
-// 0 = Celsius
-// 1 = Fahrenheit
-void check_temp(int mode)
+void toogle_PS2_disc_icon()
 {
-	int string;
-	uint32_t temp_cpu = 0, temp_rsx = 0;
-	sys_game_get_temperature(0, &temp_cpu);
-    sys_game_get_temperature(1, &temp_rsx);
-
-	if(!mode)
-		string = RetrieveString("msg_fan_temp_celsius", (char*)XAI_PLUGIN);			
-	else
+	if(!check_cobra_version())
 	{
-		celsius_to_fahrenheit(&temp_cpu);
-		celsius_to_fahrenheit(&temp_rsx);
-
-		string = RetrieveString("msg_fan_temp_fahrenheit", (char*)XAI_PLUGIN);	
+		ShowMessage("msg_syscall8_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return;
 	}	
 
-	swprintf_(wchar_string, 120, (wchar_t*)string, temp_cpu, temp_rsx);	
+	cobra_read_config(cobra_config);
+	cobra_config->color_disc = !cobra_config->color_disc;
+    cobra_write_config(cobra_config);
+
+	system_call_3(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_SWAP_PS2_ICON_COLOR, (int)cobra_config->color_disc);
+
+	ShowMessage(((int)cobra_config->color_disc) ? "msg_ps2_disc_blue" : "msg_ps2_disc_default", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+}
+
+void check_temp()
+{
+	int string;
+	uint32_t temp_cpu_c = 0, temp_rsx_c = 0;
+	uint32_t temp_cpu_f = 0, temp_rsx_f = 0;
+
+	sys_game_get_temperature(0, &temp_cpu_c);
+    sys_game_get_temperature(1, &temp_rsx_c);
+
+	temp_cpu_f = celsius_to_fahrenheit(&temp_cpu_c);
+	temp_rsx_f = celsius_to_fahrenheit(&temp_rsx_c);
+
+	string = RetrieveString("msg_fan_temp", (char*)XAI_PLUGIN);	
+
+	swprintf_(wchar_string, 120, (wchar_t*)string, temp_cpu_c, temp_rsx_c, temp_cpu_f, temp_rsx_f);	
 	PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_INFO2);
 }
 
@@ -2566,7 +2609,7 @@ void installPKG(char *path)
 	LoadPlugin("game_ext_plugin", (void*)installPKG_thread);
 }
 
-void searchDirectory(char *pDirectoryPath, char *fileformat, char *fileout)
+/*void searchDirectory(char *pDirectoryPath, char *fileformat, char *fileout)
 {
     int fd;
 	int ret; 
@@ -2599,7 +2642,7 @@ void searchDirectory(char *pDirectoryPath, char *fileformat, char *fileout)
 
     ret = cellFsClosedir(fd);
 	log("cellFsClosedir(fd) = %x\n", ret);
-}
+}*/
 
 void applicable_version()
 {
@@ -2904,7 +2947,7 @@ void setLed(const char *mode)
 
 int load_ftp()
 {
-	int slot = 0;
+	int slot = 0, load_slot = 0;
 	char ip[0x10] = { NULL };
 	char name[120], filename[120];
 	CellFsStat stat;	
@@ -2921,9 +2964,16 @@ int load_ftp()
 		return 1;
 	}
 
+	// Check if it is enabled
 	for(slot = 1; slot < MAX_BOOT_PLUGINS; slot++)
 	{
-		system_call_5(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_GET_VSH_PLUGIN_INFO, (uint64_t)slot, (uint64_t)(uint32_t)name, (uint64_t)(uint32_t)filename);
+		memset(name, 0, sizeof(name));
+		memset(filename, 0, sizeof(filename));
+
+		ps3mapi_get_vsh_plugin_info(slot, name, filename);
+
+		if(strlen(name) == 0 && load_slot == 0) 	
+			load_slot = slot;
 
 		if(!strcmp(name, FTPD))
 		{
@@ -2932,20 +2982,25 @@ int load_ftp()
 		}
 	}
 
-	for(slot = 1; slot < MAX_BOOT_PLUGINS; slot++)
+	if(!load_slot)
 	{
-		if(cobra_load_vsh_plugin(slot, FTP_SRPX, NULL, 0) >= 0)
-		{
-			log("ftp.sprx plugin loaded in slot %d\n", slot);
+		ShowMessage("msg_ftp_not_free_slots", (char *)XAI_PLUGIN, (char *)TEX_ERROR);		
+		return 1;
+	}
+
+	if(cobra_load_vsh_plugin(load_slot, FTP_SRPX, NULL, 0) >= 0)
+	{
+		log("ftp.sprx plugin loaded in slot %d\n", load_slot);
 			
-			sceNetCtlGetInfoVsh(0x10, ip);
+		memset(ip, 0, sizeof(ip));
 
-			int string = RetrieveString("msg_ftp_sprx_enabled", (char*)XAI_PLUGIN);	
-			swprintf_(wchar_string, 120, (wchar_t*)string, (ip[0] == NULL ? (int)"-" : (int)ip));
-			PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
+		sceNetCtlGetInfoVsh(0x10, ip);
 
-			return 0;
-		}
+		int string = RetrieveString("msg_ftp_sprx_enabled", (char*)XAI_PLUGIN);	
+		swprintf_(wchar_string, 120, (wchar_t*)string, (ip[0] == NULL ? (int)"-" : (int)ip));
+		PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
+
+		return 0;
 	}
 
 	ShowMessage("msg_ftp_sprx_enabled_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
@@ -2965,11 +3020,13 @@ int unload_ftp()
 
 	for(slot = 1; slot < 7; slot++)
 	{
-		system_call_5(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_GET_VSH_PLUGIN_INFO, (uint64_t)slot, (uint64_t)(uint32_t)name, (uint64_t)(uint32_t)filename);
+		memset(name, 0, sizeof(name));
+
+		ps3mapi_get_vsh_plugin_info(slot, name, filename);
 
 		if(!strcmp(name, FTPD))
 		{
-			cobra_unload_vsh_plugin(slot);
+			ps3mapi_unload_vsh_plugin(name);
 			ShowMessage("msg_ftp_sprx_disabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 			return 0;
 		}
@@ -2977,38 +3034,6 @@ int unload_ftp()
 
 	ShowMessage("msg_ftp_sprx_not_enabled", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
 	return 1;
-}
-
-// From TheRouletteBoi's RouLetteVshMenu 
-// https://github.com/TheRouletteBoi/RouLetteVshMenu
-uint32_t GetGpuClockSpeed()
-{	
-	for(uint64_t offset = 0x500000; offset < 0x700000; offset = offset + 4)
-	{	
-		if(lv1_peek(offset) == GPU_CLOCK_PATTERN1 && lv1_peek(offset + 8) == GPU_CLOCK_PATTERN2 && lv1peek32(offset + 16) == GPU_CLOCK_PATTERN3)
-		{
-			uint64_t gpuClock = lv1_peek(offset + 0x14);
-			return (static_cast<uint32_t>(gpuClock >> 32) / 0xF4240) & 0x1FFF;			
-		}
-	}
-
-	return 0;
-}
-
-// From TheRouletteBoi's RouLetteVshMenu 
-// https://github.com/TheRouletteBoi/RouLetteVshMenu
-uint32_t GetGpuGddr3RamClockSpeed()
-{
-	for(uint64_t offset = 0x500000; offset < 0x700000; offset = offset + 4)
-	{	
-		if(lv1_peek(offset) == GPU_DDR3_CLOCK_PATTERN1 && lv1_peek(offset + 8) == GPU_DDR3_CLOCK_PATTERN2 && lv1peek32(offset + 16) == GPU_DDR3_CLOCK_PATTERN3)
-		{
-			uint64_t gpuddr3Clock = lv1_peek(offset + 0x14);
-			return (static_cast<uint32_t>(gpuddr3Clock >> 32) / 0xF4240) & 0x1FFF;			
-		}		
-	}
-
-	return 0;
 }
 
 void spoof_idps()
@@ -3536,6 +3561,7 @@ void sm_error_log()
 
 	fclose_(fp);
 
+	buzzer(SINGLE_BEEP);
 	int string = RetrieveString(error_count ? "msg_sm_error_log_warning_done" : "msg_sm_error_log_done", (char*)XAI_PLUGIN);	
 	swprintf_(wchar_string, 120, (wchar_t*)string, (int)file_path);
 	PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)error_count ? TEX_WARNING : TEX_SUCCESS);
@@ -3647,6 +3673,7 @@ void get_token_seed()
 	lv1_poke(auth_check, ori_auth_check);
 	lv1_poke(patch1, ori_patch1);
 
+	buzzer(SINGLE_BEEP);
 	string = RetrieveString("msg_get_token_seed_done", (char*)XAI_PLUGIN);	
 	swprintf_(wchar_string, 120, (wchar_t*)string, (int)file_path);
 	PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);

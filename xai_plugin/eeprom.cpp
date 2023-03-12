@@ -117,7 +117,7 @@ static int dump_eeprom_data(uint32_t offset, char *location)
 
 	cellFsChmod(file_path, 0666);
 
-	log("Dumping %X.bin... ", (int)offset);
+	log("Dumping %X.bin...\n", (int)offset);
 
 	for(i = offset; i < offset + 0x100; i++)
 	{

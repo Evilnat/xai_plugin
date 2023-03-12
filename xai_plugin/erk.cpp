@@ -152,6 +152,7 @@ void dumperk(void)
 
 	if(!dumped)
 	{
+		buzzer(SINGLE_BEEP);
 		int string = RetrieveString("msg_dump_erk_ok", (char*)XAI_PLUGIN);	
 		swprintf_(wchar_string, 120, (wchar_t*)string, (int)dump_file_path);	
 		PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);		

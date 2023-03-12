@@ -16,6 +16,8 @@
 #include "cex2dex.h"
 #include "eeprom.h"
 
+#define XAI_VERSION "XAI Version 1.13"
+
 SYS_MODULE_INFO(xai_plugin, 0, 1, 1);
 SYS_MODULE_START(_xai_plugin_prx_entry);
 SYS_MODULE_STOP(_xai_plugin_prx_stop);
@@ -207,9 +209,10 @@ static void plugin_thread(uint64_t arg)
 		enable_npsignin_lck();
 	else if(strcmp(action_thread, "disable_npsignin_lck") == 0)	
 		disable_npsignin_lck();
+	else if(strcmp(action_thread, "toggle_ps2_icon") == 0)	
+		toogle_PS2_disc_icon();
 	/*else if(strcmp(action_thread, "toggle_ext_cobra") == 0)
 		toggle_ext_cobra();*/
-
 
 	// PSN Tools
 	else if(strcmp(action_thread, "disable_syscalls") == 0)	
@@ -385,10 +388,8 @@ static void plugin_thread(uint64_t arg)
 		getPS3Lifetime();
 	else if(strcmp(action_thread, "fan_speed") == 0)	
 		fan_speed();
-	else if(strcmp(action_thread, "show_temp_celsius") == 0)	
-		check_temp(0);
-	else if(strcmp(action_thread, "show_temp_fahrenheit") == 0)	
-		check_temp(1);
+	else if(strcmp(action_thread, "show_temp") == 0)	
+		check_temp();
 	else if(strcmp(action_thread, "show_idps") == 0)	
 		show_idps();			
 	else if(strcmp(action_thread, "show_psid") == 0)	
@@ -404,6 +405,8 @@ static void plugin_thread(uint64_t arg)
 		if(toggle_coldboot() == CELL_OK)
 			ShowMessage((cellFsStat("/dev_flash/vsh/resource/coldboot.raf.ori", &statinfo) == CELL_OK) ? "msg_mod_coldboot_enabled" : "msg_ori_coldboot_enabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}	
+	else if(strcmp(action_thread, "show_version") == 0)
+		notify(XAI_VERSION);
 	/*else if(strcmp(action_thread, "toggle_sysconf_rco") == 0)
 	{
 		CellFsStat statinfo;
@@ -420,13 +423,13 @@ static void plugin_thread(uint64_t arg)
 	else if(strcmp(action_thread, "buzzer_triple") == 0)
 		buzzer(TRIPLE_BEEP);
 	else if(strcmp(action_thread, "buzzer_continuous") == 0)
-		buzzer(CONTINUOUS_BEEP);
+		buzzer(CONTINUOUS_BEEP);	
 
 	// CEX2DEX Options
 	else if(strcmp(action_thread, "convert_cex") == 0)
-		cex2dex(0);
+		cex2dex(CEX_TO_DEX);
 	else if(strcmp(action_thread, "convert_dex") == 0)
-		cex2dex(1);
+		cex2dex(DEX_TO_CEX);
 	else if(strcmp(action_thread, "swap_kernel") == 0)
 		swap_kernel();
 	else if(strcmp(action_thread, "check_targetid") == 0)			
@@ -480,9 +483,9 @@ static void plugin_thread(uint64_t arg)
 	else if(strcmp(action_thread, "check_qa") == 0)
 		read_qa_flag();
 	else if(strcmp(action_thread, "enable_qa") == 0)
-		set_qa(1);
+		set_qa(ENABLE);
 	else if(strcmp(action_thread, "disable_qa") == 0)
-		set_qa(0);
+		set_qa(DISABLE);
 
 	// xRegistry options	
 	else if(strcmp(action_thread, "backup_registry") == 0)	
@@ -561,6 +564,8 @@ static void plugin_thread(uint64_t arg)
 	// Dump Tools options	
 	else if(strcmp(action_thread, "clean_log") == 0)	
 		clean_log();
+	else if(strcmp(action_thread, "export_rap") == 0)	
+		export_rap();
 	else if(strcmp(action_thread, "dump_idps") == 0)	
 		dump_idps();	
 	else if(strcmp(action_thread, "dump_psid") == 0)	

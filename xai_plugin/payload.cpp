@@ -51,26 +51,33 @@ static void lv2_copy_from_user(const void* src, uint64_t dst, uint64_t size)
 
 int install_payload(void) 
 {
-	int target = 0;
+	uint64_t toc = 0;
 
 	if(lv2_peek(CEX_OFFSET) == CEX)
 	{
-		target = 0;
 		memcpy(payload, payload_481C_489C, payload_size);
+		toc = TOC_OFFSET;
+	}
+	else if(lv2_peek(CEX_OFFSET - 0x10) == CEX)
+	{
+		memcpy(payload, payload_490C, payload_size);
+		toc = TOC_490_OFFSET;
 	}
 	else if(lv2_peek(DEX_OFFSET) == DEX)
 	{
-		target = 1;
 		memcpy(payload, payload_481D_489D, payload_size);
+		toc = TOC_DEX_OFFSET;
 	}
+	else
+		return -1;
 
-	if(payload_size <= 0)
+	if(!toc || payload_size <= 0)
 		return -1;
 
 	lv2_copy_from_user(payload, PAYLOAD_OFFSET, payload_size);
 
 	lv2_poke(PAYLOAD_OPD_OFFSET + 0, PAYLOAD_OFFSET);
-	lv2_poke(PAYLOAD_OPD_OFFSET + 8, (!target) ? TOC_OFFSET : TOC_DEX_OFFSET);
+	lv2_poke(PAYLOAD_OPD_OFFSET + 8, toc);
 
 	real_opd_offset = SYSCALL_OPD_OFFSET(SYSCALL_RUN_PAYLOAD);
 	lv2_poke(SYSCALL_OPD_PTR_OFFSET(SYSCALL_RUN_PAYLOAD), PAYLOAD_OPD_OFFSET);
