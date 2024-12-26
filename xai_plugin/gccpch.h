@@ -50,6 +50,8 @@ static int (*cellCryptoPuSha1Hmac)(uint8_t *hmac_hash, uint8_t *data_in, int32_t
 static int (*cellCryptoPuSha1HmacInit)(uint64_t data[160], uint8_t *key, int32_t key_length) = 0;
 static int (*cellCryptoPuSha1HmacTransform)(uint64_t data[160], uint8_t *data_in, int32_t data_length) = 0;
 static int (*cellCryptoPuSha1HmacFinal)(uint8_t *hmac_hash, uint64_t data[160]) = 0;
+static int (*cellCryptoPuSha1Hash)(uint8_t *out_sha1, uint8_t *in, uint32_t length) = 0;
+static int (*cellCryptoPuEccEcDsaVeri)(uint64_t ret, uint8_t *hash, uint8_t *public_key, uint8_t *curve) = 0;
 
 static int (*update_mgr_read_eprom)(int offset, void *buffer);      
 static int (*update_mgr_write_eprom)(int offset, int value);
@@ -62,6 +64,11 @@ static xsetting_D0261D72_class*(*xSettingRegistryGetInterface)() = 0;
 static xsetting_AF1F161_class*(*xSettingSystemInfoGetInterface)() = 0;
 static xsetting_CC56EB2D_class*(*xUserGetInterface)() = 0;
 
+static xsetting_16A8A805_class*(*xSettingBdvdGetInterface)() = 0;
+static xsetting_8B69F85A_class*(*xSettingDateGetInterface)() = 0;
+static int (*_cellRtcGetCurrentTick)(uint64_t *pTick) = 0;
+static int (*_cellRtcSetCurrentTick)(uint64_t *pTick) = 0;
+
 static void (*NotifyWithTexture)(int32_t, const char *eventName, int32_t, int32_t *texture, int32_t*, const char*, const char*, float, const wchar_t *text, int32_t, int32_t, int32_t);
 static uint32_t (*FindTexture)(int32_t *texptr, uint32_t plugin, const char *name);
 
@@ -73,6 +80,7 @@ static size_t (*wcstombs_)(char *dest, const wchar_t *src, size_t max);
 static uint64_t (*stoull_)(const char *ptr, char **endptr, int base);
 
 static FILE *(*fopen_)(const char *filename, const char *mode);
+static size_t *(*fread_)(void *pointer, size_t size, size_t nmemb, FILE *stream);
 static int (*fclose_)(FILE *stream);
 static int (*fprintf_)(FILE *stream, const char *format, ...);
 static char *(*ctime_)(const time_t *timer);
@@ -81,7 +89,7 @@ static void (*xRegistrySetValue)(unsigned int handle, unsigned int path, unsigne
 static int (*xRegistryGetValue)(unsigned int a1, unsigned int a2, unsigned int a3, unsigned int a4, unsigned int a5, unsigned int a6) = 0;
 static void (*xGetDefaultInstance)(int a1, int *a2, void *a3, void *a4, void *a5, void *a6) = 0;
 
-static int (*FindString)(int plugin, const char *text);
+static int (*GetString)(int plugin, const char *text);
 static uint32_t (*sceNetCtlGetInfoVsh)(uint32_t size, const char *ip);
 
 static int (*cellFsUtilUmount)(const char *device_path, int r4) = 0;

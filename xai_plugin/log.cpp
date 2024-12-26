@@ -76,6 +76,11 @@ int sprintf_(char *str, const char *format, int v1, int v2, int v3, int v4, int 
 	return vsh_sprintf(str, format, v1, v2, v3, v4, v5);
 }
 
+int sprintf_(char *str, const char *format, int v1, int v2, int v3, int v4, int v5, int v6)
+{
+	return vsh_sprintf(str, format, v1, v2, v3, v4, v5, v6);
+}
+
 int sprintf_(char *str, const char *format, int v1, int v2, int v3, int v4, int v5, int v6, int v7, int v8)
 {
 	return vsh_sprintf(str, format, v1, v2, v3, v4, v5, v6, v7, v8);
@@ -134,6 +139,11 @@ int swprintf_(wchar_t *str, size_t size, const wchar_t *format, int v1, int v2, 
 int swprintf_(wchar_t *str, size_t size, const wchar_t *format, int v1, int v2, int v3, int v4, int v5, int v6, int v7, int v8, int v9)
 {
 	return vsh_swprintf(str, size, format, v1, v2, v3, v4, v5, v6, v7, v8, v9);
+}
+
+int swprintf_(wchar_t *str, size_t size, const wchar_t *format, int v1, int v2, int v3, int v4, int v5, int v6, int v7, int v8, int v9, int v10)
+{
+	return vsh_swprintf(str, size, format, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10);
 }
 
 void log(char *format, float param1)

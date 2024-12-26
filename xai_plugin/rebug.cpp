@@ -56,7 +56,7 @@ int toggle_xmb_plugin()
 
 		if(ret != CELL_OK)
 		{
-			ShowMessage("msg_devblind_mount_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			showMessage("msg_devblind_mount_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
 			return 1;
 		}
 	}
@@ -65,18 +65,18 @@ int toggle_xmb_plugin()
 	{
 		cellFsRename(XMB_PLUGIN_SPRX, XMB_PLUGIN_SPRX_CEX);
 		cellFsRename(XMB_PLUGIN_SPRX_DEX, XMB_PLUGIN_SPRX);
-		ShowMessage("msg_host_enabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);	
+		showMessage("msg_host_enabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);	
 		return 0;
 	}
 	else if(cellFsStat(XMB_PLUGIN_SPRX_CEX, &stat) == CELL_OK)
 	{
 		cellFsRename(XMB_PLUGIN_SPRX, XMB_PLUGIN_SPRX_DEX);
 		cellFsRename(XMB_PLUGIN_SPRX_CEX, XMB_PLUGIN_SPRX);
-		ShowMessage("msg_host_disabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);	
+		showMessage("msg_host_disabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);	
 		return 0;
 	}
 	else
-		ShowMessage("msg_switch_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		showMessage("msg_switch_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 	
 	return 1;
 }
@@ -93,14 +93,14 @@ int toggle_xmb_mode()
 
 		if(ret != CELL_OK)
 		{
-			ShowMessage("msg_devblind_mount_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			showMessage("msg_devblind_mount_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
 			return 1;
 		}
 	}
 
 	if(cellFsStat(VSH_SWP, &stat) == CELL_OK)
 	{		
-		ShowMessage("msg_need_rebug_mode", (char*)XAI_PLUGIN, (char*)TEX_WARNING);			
+		showMessage("msg_need_rebug_mode", (char*)XAI_PLUGIN, (char*)TEX_WARNING);			
 		return 1;
 	}
 
@@ -108,18 +108,18 @@ int toggle_xmb_mode()
 	{
 		cellFsRename(VSH_SELF, VSH_CSP);
 		cellFsRename(VSH_DSP, VSH_SELF);
-		ShowMessage("msg_xmb_dex", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);			
+		showMessage("msg_xmb_dex", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);			
 		return 0;
 	}
 	else if(cellFsStat(VSH_CSP, &stat) == CELL_OK)
 	{
 		cellFsRename(VSH_SELF, VSH_DSP);
 		cellFsRename(VSH_CSP, VSH_SELF);
-		ShowMessage("msg_xmb_cex", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);			
+		showMessage("msg_xmb_cex", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);			
 		return 0;
 	}
 	else
-		ShowMessage("msg_switch_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+		showMessage("msg_switch_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
 
 	return 1;	
 }
@@ -136,7 +136,7 @@ int normal_mode()
 
 		if(ret != CELL_OK)
 		{
-			ShowMessage("msg_devblind_mount_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			showMessage("msg_devblind_mount_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
 			return ret;
 		}
 	}
@@ -159,7 +159,7 @@ int normal_mode()
 	if(ret == CELL_OK)	
 		rebug_mode_to_normal_mode();
 	else
-		ShowMessage("msg_switch_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		showMessage("msg_switch_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 
 	log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount(DEV_BLIND, 0));
 
@@ -178,7 +178,7 @@ int rebug_mode()
 
 		if(ret != CELL_OK)
 		{
-			ShowMessage("msg_devblind_mount_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			showMessage("msg_devblind_mount_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
 			return ret;
 		}
 	}
@@ -201,7 +201,7 @@ int rebug_mode()
 	if(ret == CELL_OK)	
 		normal_mode_to_rebug_mode();	
 	else
-		ShowMessage("msg_switch_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		showMessage("msg_switch_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 
 	log_function("xai_plugin", __VIEW__, "cellFsUtilUnMount", "(/dev_blind) = %x\n", cellFsUtilUnMount(DEV_BLIND, 0));
 
@@ -220,7 +220,7 @@ int debugsettings_mode()
 
 		if(ret != CELL_OK)
 		{
-			ShowMessage("msg_devblind_mount_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			showMessage("msg_devblind_mount_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
 			return ret;
 		}
 	}	
@@ -230,18 +230,18 @@ int debugsettings_mode()
 	{
 		cellFsRename(SYSCONF_SPRX, SYSCONF_SPRX_DEX);
 		cellFsRename(SYSCONF_SPRX_CEX, SYSCONF_SPRX);
-		ShowMessage("msg_debug_settings_cex", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);	
+		showMessage("msg_debug_settings_cex", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);	
 	}
 	// "/dev_blind/vsh/module/sysconf_plugin.sprx.dex"
 	else if(cellFsStat(SYSCONF_SPRX_DEX, &statinfo) == CELL_OK)
 	{	
 		cellFsRename(SYSCONF_SPRX, SYSCONF_SPRX_CEX);
 		cellFsRename(SYSCONF_SPRX_DEX, SYSCONF_SPRX);
-		ShowMessage("msg_debug_settings_dex", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);	
+		showMessage("msg_debug_settings_dex", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);	
 	}
 	else
 	{
-		ShowMessage("msg_unable_find_files_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);	
+		showMessage("msg_unable_find_files_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);	
 		return 1;
 	}
 
@@ -252,7 +252,7 @@ int debugsettings_mode()
 
 /*void download_toolbox()
 {
-	ShowMessage("msg_download_toolbox", (char*)XAI_PLUGIN, (char*)TEX_WARNING);
+	showMessage("msg_download_toolbox", (char*)XAI_PLUGIN, (char*)TEX_WARNING);
 	downloadPKG(L"https://github.com/Joonie86/Rebug-Toolbox/releases/download/2.03.06/REBUG_TOOLBOX_02.03.06.MULTI.16.pkg.946.v02.03.06_brewology_com.pkg");
 }*/
 
@@ -264,7 +264,7 @@ int debugsettings_mode()
 
 	if(pkgpath[0] != 0)
 	{
-		ShowMessage("msg_install_toolbox", (char*)XAI_PLUGIN, (char*)TEX_WARNING);
+		showMessage("msg_install_toolbox", (char*)XAI_PLUGIN, (char*)TEX_WARNING);
 		log("installPKG(%s)\n", pkgpath); 
 		installPKG(pkgpath);
 
@@ -274,5 +274,5 @@ int debugsettings_mode()
 		cellFsUnlink(pkgpath);
 	}
 	else
-		ShowMessage("msg_toolbox_not_found", (char*)XAI_PLUGIN, (char*)TEX_WARNING);
+		showMessage("msg_toolbox_not_found", (char*)XAI_PLUGIN, (char*)TEX_WARNING);
 }*/

@@ -168,6 +168,12 @@ void lv1_poke32(uint64_t addr, uint32_t value)
 	lv1_poke(addr, ((uint64_t)value << 32) | (old_value & 0xFFFFFFFFULL));
 }
 
+uint64_t lv1_peek_cobra(uint64_t addr)
+{
+	system_call_1(11, addr);
+	return_to_user_prog(uint64_t);
+}
+
 // LV2 Peek/Poke
 uint64_t lv2_peek(uint64_t addr)
 {
@@ -219,7 +225,7 @@ int sys_sm_shutdown(uint16_t op)
 	return_to_user_prog(int);
 }
 
-void xmb_reboot(uint16_t op)
+void rebootXMB(uint16_t op)
 {
 	cellFsUnlink("/dev_hdd0/tmp/turnoff");
 	sys_sm_shutdown(op);
@@ -242,7 +248,7 @@ int check_cobra_and_syscall()
 
 	if(check_syscall8() != 0 || cobra_version == 0)
 	{
-		ShowMessage("msg_cobra_not_supported", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		showMessage("msg_cobra_not_supported2", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 		return 1;
 	}
 
@@ -322,9 +328,10 @@ int sys_sm_request_scversion(uint64_t *SoftID, uint64_t *old_PatchID, uint64_t *
 	return_to_user_prog(int);	
 }
 
-int check_syscalls()
+int checkSyscalls(int mode)
 {
-	if(lv2_peek(SYSCALL_TABLE) == DISABLED)
+	// 0 = LV2 | 1 = LV1
+	if((!mode ? lv2_peek(SYSCALL_TABLE) : lv1_peek(SYSCALL_TABLE)) == DISABLED)
 		return 1;
 	
 	return 0;
@@ -340,4 +347,45 @@ int check_flash_free_space()
 	uint64_t total_free, avail_free;
 	system_call_3(840, (uint64_t)(uint32_t)DEV_BLIND, (uint64_t)(uint32_t)&total_free, (uint64_t)(uint32_t)&avail_free);
 	return avail_free;
+}
+
+int lv2_gelic_eurus_control(uint16_t cmd, uint8_t *cmdbuf, uint64_t cmdbuf_size)
+{
+	system_call_3(726, cmd, (uint64_t) cmdbuf, cmdbuf_size);
+	return_to_user_prog(int);
+}
+
+int is_hen()
+{
+	system_call_1(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_IS_HEN);
+
+	// HEN
+	if((int)(p1) == SYSCALL8_OPCODE_IS_HEN)
+		return 0;
+
+	return 1;
+}
+
+int sys_ss_secure_rtc(uint64_t time)
+{
+	system_call_4(0x362, 0x3003, time / 1000000, 0, 0);
+	return_to_user_prog(int);
+}
+
+int sysGetCurrentTime(uint64_t *sec, uint64_t *nsec)
+{
+	system_call_2(145,(uint32_t)sec, (uint32_t)nsec);
+	return_to_user_prog(int);
+}
+
+int sysSetCurrentTime(uint64_t sec, uint64_t nsec)
+{
+	system_call_2(146, (uint32_t)sec, (uint32_t)nsec);
+	return_to_user_prog(int);
+}
+
+int sys_time_get_rtc(uint64_t *real_time_clock)
+{
+	system_call_1(119, (uint32_t)real_time_clock);
+	return_to_user_prog(int);
 }

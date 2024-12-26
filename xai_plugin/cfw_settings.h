@@ -3,6 +3,10 @@
 
 #define DEV_BLIND						"/dev_blind"
 
+#define IDPS_TMP_FILE					"/dev_hdd0/tmp/IDPS.txt"
+#define PSID_TMP_FILE					"/dev_hdd0/tmp/PSID.txt"
+#define MAC_TMP_FILE					"/dev_hdd0/tmp/MAC.txt"
+
 #define USB_KERNEL						"/dev_usb000/lv2_kernel.self"
 #define DBLIND_KERNEL					"/dev_blind/lv2_kernel.self"
 #define FLASH_KERNEL					"/dev_flash/lv2_kernel.self"
@@ -42,6 +46,7 @@
 #define NAND_DUMP						"FLASH-NAND-FW%X.%X%X.bin"
 
 #define XREGISTRY_FILE					"/dev_flash2/etc/xRegistry.sys"
+#define XREGISTRY_BACKUP_FILE			"/dev_flash2/etc//backup/xRegistry.sys"
 #define ACT_DAT_PATH					"/dev_hdd0/home/%08d/exdata/act.dat"
 
 #define TEX_ERROR						"tex_error_ws"
@@ -49,12 +54,19 @@
 #define TEX_WARNING						"tex_warning"
 #define TEX_INFO						"tex_notification_info"
 #define TEX_INFO2						"tex_notification_info2"
-#define EXPLORE_PLUGIN					"explore_plugin"
 #define XAI_PLUGIN						"xai_plugin"
 
 #define FTP_SRPX						"/dev_flash/vsh/module/ftp.sprx"
 #define FTPD							"FTPD"
+#define TROPHYUNLOCKER_SRPX				"/dev_flash/vsh/module/trophy_unlocker_plugin.sprx"
+#define TROPHYUNLOCKER					"pluginLoader"
 #define MAX_BOOT_PLUGINS 				7
+
+#define WEBMAN_CFG						"/dev_hdd0/tmp/wm_config.bin"
+
+#define LIBAUDIO_SPRX					"/dev_blind/sys/external/libaudio.sprx"
+#define LIBAUDIO_ORIGINAL				"/dev_blind/sys/external/libaudio.sprx.ori"
+#define LIBAUDIO_PATCHED				"/dev_blind/sys/external/libaudio.sprx.patched"
 
 #define LV2							0
 #define LV1							1
@@ -79,6 +91,74 @@
 
 #define PRODG_PATCH_OFFSET			0x8000000000003B38ULL
 #define PRODG_PATCH					0x386000014E800020ULL
+
+#define START_OFFSET_MAC			0x8000000000070000ULL
+#define END_OFFSET_MAC     			0x8000000000100000ULL
+
+#define REDUMP_WATERMARK_OFFSET		0xF70	
+#define REDUMP_KEY_OFFSET			0xF80	
+
+typedef struct
+{
+	int ps3_region;
+	char *region;
+	uint32_t dvd_region;
+	uint32_t bd_region;
+} RegionCode;
+
+typedef struct
+{
+	uint32_t dvd_region;
+	char *region;
+} DVDRegionCode;
+
+typedef struct
+{
+	uint32_t bd_region;
+	char *region;
+} BDRegionCode;
+
+typedef struct _PS3RegionInfo
+{
+	int isEncrypted;
+	uint64_t first_address_region;
+	uint64_t last_address_region;
+} PS3RegionInfo;
+
+static RegionCode regionPS3[14] =
+{
+	{ 0x00, "msg_default", 0, 0 },
+	{ 0x83, "msg_japan", 2, 1 }, 
+	{ 0x84, "msg_usa", 1, 1 },  
+	{ 0x85, "msg_europe", 2, 2 }, 
+	{ 0x86, "msg_korea", 3, 1 },
+	{ 0x87, "msg_uk", 2, 2 }, 
+	{ 0x88, "msg_mexico", 4, 1 }, 
+	{ 0x89, "msg_australia", 4, 2 },
+	{ 0x8A, "msg_asia", 3, 1 }, 
+	{ 0x8B, "msg_taiwan", 3, 1 }, 
+	{ 0x8C, "msg_russia", 5, 4 },
+	{ 0x8D, "msg_china", 6, 4 }, 
+	{ 0x8E, "msg_hongkong", 3, 1 }, 
+	{ 0x8F, "msg_brazil", 4, 1},
+};
+
+static DVDRegionCode dvd_video_region[6] =
+{
+	{ 1, "Region 1" }, 
+	{ 2, "Region 2" },  
+	{ 3, "Region 3" }, 
+	{ 4, "Region 4" },
+	{ 5, "Region 5" }, 
+	{ 6, "Region 6" }, 
+};
+
+static BDRegionCode bd_video_region[3] =
+{
+	{ 1, "Region A" }, 
+	{ 2, "Region B" },  
+	{ 4, "Region C" }, 
+};
 
 static uint8_t eid2_indiv_seed_[0x40] = 
 {		0x74, 0x92, 0xE5, 0x7C, 0x2C, 0x7C, 0x63, 0xF4, 0x49, 0x42, 0x26, 0x8F, 0xB4, 0x1C, 0x58, 0xED, 
@@ -177,6 +257,8 @@ int sha1_hmac(uint8_t *hmac_hash, uint8_t *data_in, int32_t data_length, uint8_t
 int sha1_hmac_starts(uint64_t data[160], uint8_t *key, int32_t key_length);
 int sha1_hmac_update(uint64_t data[160], uint8_t *data_in, int32_t data_length);
 int sha1_hmac_finish(uint8_t *hmac_hash, uint64_t data[160]);
+int sha1_hash(uint8_t *out_sha1, uint8_t *in, uint32_t length);
+int verify_ecdsa(uint8_t signature, uint8_t *hash, uint8_t *public_key, int curve);
 
 int GetIDPS(void *idps);
 
@@ -185,13 +267,20 @@ int update_mgr_write_eeprom(int offset, int value);
 
 void free__(void *ptr);
 int malloc__(size_t size);
+FILE *fopen__(const char *filename, const char *mode);
+size_t fread__(void *pointer, size_t size, size_t nmemb, FILE *stream);
+int fclose__(FILE *stream);
 int memalign__(size_t boundary, size_t size_arg);
 
 void load_cfw_functions();
 int RetrieveString(const char *string, const char *plugin);
 void PrintString(wchar_t *string, const char *plugin, const char *tex_icon);
 
-void ShowMessage(const char *string, const char *plugin, const char *tex_icon);
+int saveFile(const char *path, void *data, size_t size);
+int readfile(const char *file, uint8_t *buffer, size_t size);
+int get_usb_device();
+
+void showMessage(const char *string, const char *plugin, const char *tex_icon);
 int patch_savedata();
 int create_rifs();
 int getAccountID();
@@ -209,8 +298,6 @@ void checkSyscall(int syscall);
 
 int set_qa(int value);
 
-void fan_speed();
-
 void show_cobra_info();
 int save_cobra_fan_cfg(int mode);
 int save_ps2_fan_cfg(int mode);
@@ -218,8 +305,11 @@ int save_ps2_fan_cfg(int mode);
 void allow_restore_sc();
 void skip_existing_rif();
 void toogle_PS2_disc_icon();
-
-void check_temp();
+void toggle_ofw_mode();
+void toggle_gameboot();
+void toggle_epilepsy_warning();
+void toggle_coldboot_animation();
+void toggle_hidden_trophy_patch();
 
 void clean_log();
 void log_klic();
@@ -230,9 +320,6 @@ void enable_screenshot();
 
 void override_sfo();
 
-int toggle_cobra();
-
-int toggle_cobra_version();
 int toggle_coldboot();
 void button_assignment();
 
@@ -251,11 +338,7 @@ void remarry_bd();
 void toggle_devblind();
 void dump_disc_key();
 
-void show_idps();
-void dump_idps();
-
-void show_psid();
-void dump_psid();
+int dump_ids();
 
 void rebuild_db();
 
@@ -268,7 +351,7 @@ int activate_account();
 void check_8th_spe();
 void toggle_8th_spe();
 
-//void enable_WhatsNew();
+void enable_WhatsNew();
 
 int getClockSpeeds();
 
@@ -278,6 +361,8 @@ void close_xml_list();
 
 int load_ftp();
 int unload_ftp();
+int load_trophy_unlocker();
+int unload_trophy_unlocker();
 
 void spoof_idps();
 void spoof_psid();
@@ -286,7 +371,6 @@ int Patch_ProDG();
 void unlock_hdd_space();
 
 void show_ip();
-//int toggle_ext_cobra();
 void getPS3Lifetime();
 
 int enable_npsignin_lck();
@@ -294,5 +378,22 @@ int disable_npsignin_lck();
 void sm_error_log();
 void get_token_seed();
 void check_ros_bank();
+
+int get_temperature_data();
+
+int spoof_mac();
+void show_ids();
+int patch_xreg_value(char *str, uint32_t value);
+
+void set_region_default();
+void toggle_dvdtvsys();
+void check_region_values();
+void set_region(int region, uint32_t dvd_region, uint32_t bd_region, uint32_t tvSystem);
+
+void Fix_CBOMB();
+void decryptRedumpISO(int src);
+int swap_libaudio();
+
+void show_bd_info();
 
 #endif /* _CFW_SETTINGS_H */

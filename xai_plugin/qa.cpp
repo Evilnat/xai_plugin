@@ -66,7 +66,7 @@ void read_qa_flag()
 	uint8_t value = 0;
 	update_mgr_read_eeprom(QA_FLAG_OFFSET, &value);
 
-	ShowMessage((!value) ? "msg_qa_check_enabled" : "msg_qa_check_disabled", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
+	showMessage((!value) ? "msg_qa_check_enabled" : "msg_qa_check_disabled", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
 }
 
 int set_qa_flag(uint8_t value)
@@ -75,7 +75,7 @@ int set_qa_flag(uint8_t value)
 	uint8_t seed[TOKEN_SIZE];
 	uint8_t token[TOKEN_SIZE];	
 
-	if(receive_eid_idps(EID5, idps))
+	if(receive_eid_idps((value == FULL ? EID0 : EID5), idps))
 		return 5;
 
 	memset(seed, 0, TOKEN_SIZE);
@@ -84,7 +84,7 @@ int set_qa_flag(uint8_t value)
 	if(seed[0x04] != 0x00 && seed[0x05] != 0x00 && seed[0x06] != 0x00 && 
 		seed[0x07] != 0x01 && seed[0x08] != 0x00 && seed[0x0A] != 0x00)
 	{
-		ShowMessage("msg_idps_not_valid", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+		showMessage("msg_idps_not_valid", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
 		return 1;
 	}	
 
@@ -92,14 +92,36 @@ int set_qa_flag(uint8_t value)
 
 	if(value)
 	{
-		seed[39] |= 0x1; // QA_FLAG_EXAM_API_ENABLE
-		seed[39] |= 0x2; // QA_FLAG_QA_MODE_ENABLE
+		// Advanced QA Flags
+		if(value == 2)
+		{
+			seed[21] |= 0x1;  // DEH_DEBUG_DISABLE 
+			seed[21] |= 0x2;  // DEX_DEBUG_DISABLE 
+			seed[21] |= 0x4;  // ALL_DEBUG_DISABLE 
+			seed[21] |= 0x20; // CEX_BOOT_ENABLE
 
-		seed[47] |= 0x2; // checked by lv2_kernel.self and sys_init_osd.self 
-		seed[47] |= 0x4; // can run sys_init_osd.self from /app_home ?
+			seed[23] |= 0x1;  // DEH_DEBUG_DISABLE 
+			seed[23] |= 0x2;  // DEX_DEBUG_DISABLE
+			seed[23] |= 0x4;  // ALL_DEBUG_DISABLE 
+			seed[23] |= 0x8;  // DEH_BOOT_ENABLE 
+			seed[23] |= 0x10; // DEX_BOOT_ENABLE 
+			seed[23] |= 0x20; // CEX_BOOT_ENABLE
 
-		seed[51] |= 0x1; // QA_FLAG_ALLOW_NON_QA
-		seed[51] |= 0x2; // QA_FLAG_FORCE_UPDATE
+			seed[51] |= 0x1; // QA_FLAG_ALLOW_NON_QA
+			seed[51] |= 0x2; // QA_FLAG_FORCE_UPDATE
+		}
+		// Default
+		else
+		{
+			seed[39] |= 0x1; // QA_FLAG_EXAM_API_ENABLE
+			seed[39] |= 0x2; // QA_FLAG_QA_MODE_ENABLE
+
+			seed[47] |= 0x2; // checked by lv2_kernel.self and sys_init_osd.self 
+			seed[47] |= 0x4; // can run sys_init_osd.self from /app_home ?
+
+			seed[51] |= 0x1; // QA_FLAG_ALLOW_NON_QA
+			seed[51] |= 0x2; // QA_FLAG_FORCE_UPDATE
+		}
 	}
 
 	sha1_hmac(seed + 60, seed, (uint32_t)60, hmac, (uint32_t)0x40);
@@ -114,14 +136,14 @@ int set_qa_flag(uint8_t value)
 
 	if(lv1_allocate_memory(4096, 0x0C, 0, &vuart_lpar_addr, &muid) != 0)
 	{
-		ShowMessage("msg_error_allocate_mem", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+		showMessage("msg_error_allocate_mem", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
 		restore_patches();
 		return 2;
 	}
 
 	if(mm_map_lpar_memory_region(vuart_lpar_addr, HV_BASE, HV_SIZE, HV_PAGE_SIZE, 0) != 0)
 	{
-		ShowMessage("msg_error_map_mem", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+		showMessage("msg_error_map_mem", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
 		restore_patches();
 		return 3;
 	}
@@ -154,7 +176,7 @@ int set_qa_flag(uint8_t value)
 
 	if(lv1_write_virtual_uart(10, vuart_lpar_addr, len, &nwritten) != 0)
 	{
-		ShowMessage("msg_error_write_uart", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+		showMessage("msg_error_write_uart", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
 		restore_patches();
 		return 4;
 	}	

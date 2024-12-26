@@ -71,19 +71,15 @@ static int restore_patches(void)
 	return 0;
 }
 
-int run_payload(uint64_t arg, uint64_t arg_size) 
+static int run_payload(uint64_t arg, uint64_t arg_size) 
 {
 	system_call_2(SYSCALL_RUN_PAYLOAD, (uint64_t)arg, (uint64_t)arg_size);
 	return_to_user_prog(int);
 }
 
-int dump_eid_root_key(const char* file_path) 
+int dump_eid_root_key(uint8_t output[0x30])
 {
-	int fd;
-	int result;
-
-	FILE* fp;
-
+	int result = 1;
 	int payload_installed = 0;
 	int patches_installed = 0;
 
@@ -104,16 +100,8 @@ int dump_eid_root_key(const char* file_path)
 	result = run_payload((uintptr_t)eid_root_key, EID_ROOT_KEY_SIZE);
 	if (result != 0) 
 		goto error;	
-	
-	result = cellFsOpen(file_path, CELL_FS_O_CREAT | CELL_FS_O_TRUNC | CELL_FS_O_RDWR, &fd, 0, 0);	
-	if (result != 0) 
-		goto error;	
 
-	cellFsChmod(file_path, 0666);
-
-	uint64_t nrw;
-	cellFsWrite(fd, eid_root_key, EID_ROOT_KEY_SIZE, &nrw);
-	cellFsClose(fd);
+	memcpy(output, eid_root_key, EID_ROOT_KEY_SIZE);
 
 	result = 0;
 
@@ -129,34 +117,36 @@ error:
 
 void dumperk(void) 
 {
-	int dumped = 1;
-	CellFsStat st;
-	char usb[120];
+	int dumped = 1, port = 0;
 	char dump_file_path[CELL_GAME_PATH_MAX];
 	wchar_t wchar_string[120];
-
-	sprintf_(dump_file_path, "/dev_hdd0/tmp/%s", (int)EID_ROOT_KEY_FILE_NAME);
-
-	for(int i = 0; i < 127; i++)
-	{				
-		sprintf_(usb, "/dev_usb%03d", i, NULL);
-
-		if(!cellFsStat(usb, &st))
-		{
-			sprintf_(dump_file_path, "%s/%s", (int)usb, (int)EID_ROOT_KEY_FILE_NAME);
-			break;
-		}
-	}
-
-	dumped = dump_eid_root_key(dump_file_path);
+	uint8_t dumped_erk[0x30];
+		
+	dumped = dump_eid_root_key(dumped_erk);	
 
 	if(!dumped)
 	{
+		sprintf_(dump_file_path, "/dev_hdd0/tmp/%s", (int)EID_ROOT_KEY_FILE_NAME);
+
+		if(saveFile(dump_file_path, dumped_erk, EID_ROOT_KEY_SIZE) != CELL_FS_SUCCEEDED)
+		{
+			showMessage("msg_dump_erk_fail", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+			return;
+		}		
+
+		port = get_usb_device();
+
+		if(port != -1)
+		{
+			sprintf_(dump_file_path, "/dev_usb%03d/%s", port, (int)EID_ROOT_KEY_FILE_NAME);	
+			saveFile(dump_file_path, dumped_erk, EID_ROOT_KEY_SIZE);
+		}
+
 		buzzer(SINGLE_BEEP);
 		int string = RetrieveString("msg_dump_erk_ok", (char*)XAI_PLUGIN);	
 		swprintf_(wchar_string, 120, (wchar_t*)string, (int)dump_file_path);	
 		PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);		
 	}
 	else
-		ShowMessage("msg_dump_erk_fail", (char *)XAI_PLUGIN, (char *)TEX_ERROR);		
+		showMessage("msg_dump_erk_fail", (char *)XAI_PLUGIN, (char *)TEX_ERROR);		
 }

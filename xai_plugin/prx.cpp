@@ -15,8 +15,9 @@
 #include "savegames.h"
 #include "cex2dex.h"
 #include "eeprom.h"
+#include "rebugtoolbox.h"
 
-#define XAI_VERSION "XAI Version 1.13"
+#define XAI_VERSION "XAI Version 1.16"
 
 SYS_MODULE_INFO(xai_plugin, 0, 1, 1);
 SYS_MODULE_START(_xai_plugin_prx_entry);
@@ -160,13 +161,13 @@ static void plugin_thread(uint64_t arg)
 {
 	// Shutdown options
 	if(strcmp(action_thread, "shutdown_action") == 0)	
-		xmb_reboot(SYS_SHUTDOWN);	
+		rebootXMB(SYS_SHUTDOWN);	
 	else if(strcmp(action_thread, "soft_reboot_action") == 0)	
-		xmb_reboot(SYS_SOFT_REBOOT);
+		rebootXMB(SYS_SOFT_REBOOT);
 	else if(strcmp(action_thread, "hard_reboot_action") == 0)	
-		xmb_reboot(SYS_HARD_REBOOT);
+		rebootXMB(SYS_HARD_REBOOT);
 	else if(strcmp(action_thread, "lv2_reboot_action") == 0)	
-		xmb_reboot(SYS_LV2_REBOOT);
+		rebootXMB(SYS_LV2_REBOOT);
 
 	// Cobra options	
 	else if(strcmp(action_thread, "cobra_info") == 0)	
@@ -181,18 +182,24 @@ static void plugin_thread(uint64_t arg)
 		load_ftp();
 	else if(strcmp(action_thread, "disable_ftp") == 0)
 		unload_ftp();
+	else if(strcmp(action_thread, "enable_trun") == 0)
+		load_trophy_unlocker();
+	else if(strcmp(action_thread, "disable_trun") == 0)
+		unload_trophy_unlocker();
 	else if(strcmp(action_thread, "allow_restore_sc") == 0)	
 		allow_restore_sc();	
 	else if(strcmp(action_thread, "skip_existing_rif") == 0)	
 		skip_existing_rif();	
-	/*else if(strcmp(action_thread, "enable_whatsnew") == 0)	
-		enable_WhatsNew();*/
+	else if(strcmp(action_thread, "enable_whatsnew") == 0)	
+		enable_WhatsNew();
+	else if(strcmp(action_thread, "toggle_external_cobra") == 0)	
+		toggle_external_cobra();	
 	else if(strcmp(action_thread, "cobra_version") == 0)
 	{		
 		if(toggle_cobra_version() == CELL_OK)
 		{
 			wait(2);
-			xmb_reboot(SYS_HARD_REBOOT);
+			rebootXMB(SYS_HARD_REBOOT);
 		}
 	}
 	else if(strcmp(action_thread, "cobra_mode") == 0)
@@ -200,7 +207,7 @@ static void plugin_thread(uint64_t arg)
 		if(toggle_cobra() == CELL_OK)
 		{
 			wait(2);
-			xmb_reboot(SYS_HARD_REBOOT);
+			rebootXMB(SYS_HARD_REBOOT);
 		}
 	}
 	else if(strcmp(action_thread, "toggle_plugins") == 0)
@@ -208,11 +215,19 @@ static void plugin_thread(uint64_t arg)
 	else if(strcmp(action_thread, "enable_npsignin_lck") == 0)	
 		enable_npsignin_lck();
 	else if(strcmp(action_thread, "disable_npsignin_lck") == 0)	
-		disable_npsignin_lck();
+		disable_npsignin_lck();		
+	else if(strcmp(action_thread, "toggle_ofw_mode") == 0)	
+		toggle_ofw_mode();
 	else if(strcmp(action_thread, "toggle_ps2_icon") == 0)	
 		toogle_PS2_disc_icon();
-	/*else if(strcmp(action_thread, "toggle_ext_cobra") == 0)
-		toggle_ext_cobra();*/
+	else if(strcmp(action_thread, "toggle_gameboot") == 0)	
+		toggle_gameboot();
+	else if(strcmp(action_thread, "toggle_coldboot_animation") == 0)	
+		toggle_coldboot_animation();
+	else if(strcmp(action_thread, "toggle_epilepsy_warning") == 0)	
+		toggle_epilepsy_warning();
+	else if(strcmp(action_thread, "toggle_hidden_trophy_patch") == 0)	
+		toggle_hidden_trophy_patch();
 
 	// PSN Tools
 	else if(strcmp(action_thread, "disable_syscalls") == 0)	
@@ -223,6 +238,8 @@ static void plugin_thread(uint64_t arg)
 		spoof_idps();
 	else if(strcmp(action_thread, "spoof_psid") == 0)	
 		spoof_psid();
+	else if(strcmp(action_thread, "spoof_mac") == 0)	
+		spoof_mac();
 	else if(strcmp(action_thread, "show_accountid") == 0)
 		getAccountID();		
 	else if(strcmp(action_thread, "set_accountid") == 0)
@@ -244,167 +261,170 @@ static void plugin_thread(uint64_t arg)
 	else if(strcmp(action_thread, "fan_mode_disabled") == 0)	
 	{
 		if(save_cobra_fan_cfg(FAN_DISABLED) == 0)			
-			ShowMessage("msg_cobra_fan_mode_disabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_mode_disabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 	else if(strcmp(action_thread, "fan_mode_syscon") == 0)	
 	{
 		if(save_cobra_fan_cfg(FAN_SYSCON) == 0)
-			ShowMessage("msg_cobra_fan_mode_syscon", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_mode_syscon", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 	else if(strcmp(action_thread, "fan_mode_max") == 0)	
 	{
 		if(save_cobra_fan_cfg(FAN_MAX) == 0)
-			ShowMessage("msg_cobra_fan_mode_max", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_mode_max", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 
 	// Dynamic Modes
 	else if(strcmp(action_thread, "fan_mode_60") == 0)	
 	{
 		if(save_cobra_fan_cfg(DYNAMIC_FAN_60) == 0)
-			ShowMessage("msg_cobra_fan_dynamic_60", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_dynamic_60", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 	else if(strcmp(action_thread, "fan_mode_65") == 0)	
 	{
 		if(save_cobra_fan_cfg(DYNAMIC_FAN_65) == 0)
-			ShowMessage("msg_cobra_fan_dynamic_65", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_dynamic_65", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 	else if(strcmp(action_thread, "fan_mode_70") == 0)	
 	{
 		if(save_cobra_fan_cfg(DYNAMIC_FAN_70) == 0)
-			ShowMessage("msg_cobra_fan_dynamic_70", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_dynamic_70", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 	else if(strcmp(action_thread, "fan_mode_75") == 0)	
 	{
 		if(save_cobra_fan_cfg(DYNAMIC_FAN_75) == 0)
-			ShowMessage("msg_cobra_fan_dynamic_75", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_dynamic_75", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 
 	// Manual Modes
 	else if(strcmp(action_thread, "fan_manual_40") == 0)	
 	{
 		if(save_cobra_fan_cfg(FAN_MANUAL_40) == 0)
-			ShowMessage("msg_cobra_fan_manual_40", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_manual_40", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 	else if(strcmp(action_thread, "fan_manual_45") == 0)	
 	{
 		if(save_cobra_fan_cfg(FAN_MANUAL_45) == 0)
-			ShowMessage("msg_cobra_fan_manual_45", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_manual_45", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 	else if(strcmp(action_thread, "fan_manual_50") == 0)	
 	{
 		if(save_cobra_fan_cfg(FAN_MANUAL_50) == 0)
-			ShowMessage("msg_cobra_fan_manual_50", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_manual_50", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 	else if(strcmp(action_thread, "fan_manual_55") == 0)	
 	{
 		if(save_cobra_fan_cfg(FAN_MANUAL_55) == 0)
-			ShowMessage("msg_cobra_fan_manual_55", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_manual_55", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 	else if(strcmp(action_thread, "fan_manual_60") == 0)	
 	{
 		if(save_cobra_fan_cfg(FAN_MANUAL_60) == 0)
-			ShowMessage("msg_cobra_fan_manual_60", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_manual_60", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 	else if(strcmp(action_thread, "fan_manual_65") == 0)	
 	{
 		if(save_cobra_fan_cfg(FAN_MANUAL_65) == 0)
-			ShowMessage("msg_cobra_fan_manual_65", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_manual_65", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 	else if(strcmp(action_thread, "fan_manual_70") == 0)	
 	{
 		if(save_cobra_fan_cfg(FAN_MANUAL_70) == 0)
-			ShowMessage("msg_cobra_fan_manual_70", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_manual_70", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 	else if(strcmp(action_thread, "fan_manual_75") == 0)	
 	{
 		if(save_cobra_fan_cfg(FAN_MANUAL_75) == 0)
-			ShowMessage("msg_cobra_fan_manual_75", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_manual_75", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 	else if(strcmp(action_thread, "fan_manual_80") == 0)	
 	{
 		if(save_cobra_fan_cfg(FAN_MANUAL_80) == 0)
-			ShowMessage("msg_cobra_fan_manual_80", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_manual_80", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 	else if(strcmp(action_thread, "fan_manual_85") == 0)	
 	{
 		if(save_cobra_fan_cfg(FAN_MANUAL_85) == 0)
-			ShowMessage("msg_cobra_fan_manual_85", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_manual_85", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 	else if(strcmp(action_thread, "fan_manual_90") == 0)	
 	{
 		if(save_cobra_fan_cfg(FAN_MANUAL_90) == 0)
-			ShowMessage("msg_cobra_fan_manual_90", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_manual_90", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 	else if(strcmp(action_thread, "fan_manual_95") == 0)	
 	{
 		if(save_cobra_fan_cfg(FAN_MANUAL_95) == 0)
-			ShowMessage("msg_cobra_fan_manual_95", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_manual_95", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 
 	// PS2 Fan modes
 	else if(strcmp(action_thread, "fan_ps2mode_disabled") == 0)	
 	{
 		if(save_ps2_fan_cfg(FAN_DISABLED) == 0)
-			ShowMessage("msg_cobra_fan_ps2mode_disabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_ps2mode_disabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 	else if(strcmp(action_thread, "fan_ps2mode_syscon") == 0)	
 	{
 		if(save_ps2_fan_cfg(FAN_SYSCON) == 0)
-			ShowMessage("msg_cobra_fan_ps2mode_syscon", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_ps2mode_syscon", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 	else if(strcmp(action_thread, "fan_ps2mode_40") == 0)	
 	{
 		if(save_ps2_fan_cfg(FAN_PS2_40) == 0)
-			ShowMessage("msg_cobra_fan_ps2mode_40", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_ps2mode_40", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 	else if(strcmp(action_thread, "fan_ps2mode_50") == 0)	
 	{
 		if(save_ps2_fan_cfg(FAN_PS2_50) == 0)
-			ShowMessage("msg_cobra_fan_ps2mode_50", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_ps2mode_50", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 	else if(strcmp(action_thread, "fan_ps2mode_60") == 0)	
 	{
 		if(save_ps2_fan_cfg(FAN_PS2_60) == 0)
-			ShowMessage("msg_cobra_fan_ps2mode_60", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_ps2mode_60", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 	else if(strcmp(action_thread, "fan_ps2mode_70") == 0)	
 	{
 		if(save_ps2_fan_cfg(FAN_PS2_70) == 0)
-			ShowMessage("msg_cobra_fan_ps2mode_70", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_ps2mode_70", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 	else if(strcmp(action_thread, "fan_ps2mode_80") == 0)	
 	{
 		if(save_ps2_fan_cfg(FAN_PS2_80) == 0)
-			ShowMessage("msg_cobra_fan_ps2mode_80", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_ps2mode_80", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 	else if(strcmp(action_thread, "fan_ps2mode_90") == 0)	
 	{
 		if(save_ps2_fan_cfg(FAN_PS2_90) == 0)
-			ShowMessage("msg_cobra_fan_ps2mode_90", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_cobra_fan_ps2mode_90", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}
 
 	// Basic options	
 	else if(strcmp(action_thread, "ps3_lifetime") == 0)	
 		getPS3Lifetime();
-	else if(strcmp(action_thread, "fan_speed") == 0)	
-		fan_speed();
-	else if(strcmp(action_thread, "show_temp") == 0)	
-		check_temp();
-	else if(strcmp(action_thread, "show_idps") == 0)	
-		show_idps();			
-	else if(strcmp(action_thread, "show_psid") == 0)	
-		show_psid();
+	else if(strcmp(action_thread, "fan_data") == 0)	
+		get_temperature_data();	
+	else if(strcmp(action_thread, "show_ids") == 0)	
+		show_ids();	
 	else if(strcmp(action_thread, "show_ip") == 0)	
 		show_ip();
+	else if(strcmp(action_thread, "decrypt_redump_isos_hdd") == 0)	
+		decryptRedumpISO(0);
+	else if(strcmp(action_thread, "decrypt_redump_isos_usb") == 0)	
+		decryptRedumpISO(1);
+	else if(strcmp(action_thread, "cbomb") == 0)	
+		Fix_CBOMB();
 	else if(strcmp(action_thread, "show_clocks") == 0)	
 		getClockSpeeds();
+	else if(strcmp(action_thread, "toggle_dlna") == 0)	
+		toggle_dlna();	
 	else if(strcmp(action_thread, "toggle_coldboot") == 0)
-	{
-		CellFsStat statinfo;
-
-		if(toggle_coldboot() == CELL_OK)
-			ShowMessage((cellFsStat("/dev_flash/vsh/resource/coldboot.raf.ori", &statinfo) == CELL_OK) ? "msg_mod_coldboot_enabled" : "msg_ori_coldboot_enabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
-	}	
+		toggle_coldboot();	
+	else if(strcmp(action_thread, "toggle_bt_audio") == 0)
+		swap_libaudio();	
+	else if(strcmp(action_thread, "show_bd_info") == 0)	
+		show_bd_info();	
 	else if(strcmp(action_thread, "show_version") == 0)
 		notify(XAI_VERSION);
 	/*else if(strcmp(action_thread, "toggle_sysconf_rco") == 0)
@@ -412,7 +432,7 @@ static void plugin_thread(uint64_t arg)
 		CellFsStat statinfo;
 
 		if(toggle_sysconf() == CELL_OK)
-			ShowMessage((cellFsStat("/dev_flash/vsh/resource/sysconf_plugin.rco.ori", &statinfo) == CELL_OK) ? "msg_mod_sysconf_enabled" : "msg_ori_sysconf_enabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage((cellFsStat("/dev_flash/vsh/resource/sysconf_plugin.rco.ori", &statinfo) == CELL_OK) ? "msg_mod_sysconf_enabled" : "msg_ori_sysconf_enabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	}*/
 
 	// Buzzer Options
@@ -431,9 +451,9 @@ static void plugin_thread(uint64_t arg)
 	else if(strcmp(action_thread, "convert_dex") == 0)
 		cex2dex(DEX_TO_CEX);
 	else if(strcmp(action_thread, "swap_kernel") == 0)
-		swap_kernel();
+		swapKernel();
 	else if(strcmp(action_thread, "check_targetid") == 0)			
-		check_targetid(0);
+		getTargetID(0);
 	else if(strcmp(action_thread, "swap_ip_xmb") == 0)			
 		toggle_xmbplugin();
 	else if(strcmp(action_thread, "toggle_vsh") == 0)			
@@ -482,34 +502,69 @@ static void plugin_thread(uint64_t arg)
 	// QA options
 	else if(strcmp(action_thread, "check_qa") == 0)
 		read_qa_flag();
-	else if(strcmp(action_thread, "enable_qa") == 0)
-		set_qa(ENABLE);
+	else if(strcmp(action_thread, "enable_qa_normal") == 0)
+		set_qa(BASIC);
+	else if(strcmp(action_thread, "enable_qa_advanced") == 0)
+		set_qa(FULL);
 	else if(strcmp(action_thread, "disable_qa") == 0)
 		set_qa(DISABLE);
 
 	// xRegistry options	
 	else if(strcmp(action_thread, "backup_registry") == 0)	
 		backup_registry();	
+	else if(strcmp(action_thread, "toggle_dvdtvsys") == 0)	
+		toggle_dvdtvsys();		
 	else if(strcmp(action_thread, "button_assignment") == 0)
 		button_assignment();	
+
+	else if(strcmp(action_thread, "set_region_japan") == 0)
+		set_region(0x83, 2, 1, 2);
+	else if(strcmp(action_thread, "set_region_usa") == 0)
+		set_region(0x84, 1, 1, 2);
+	else if(strcmp(action_thread, "set_region_eur") == 0)
+		set_region(0x85, 2, 2, 2);
+	else if(strcmp(action_thread, "set_region_korea") == 0)
+		set_region(0x86, 3, 1, 2);
+	else if(strcmp(action_thread, "set_region_uk") == 0)
+		set_region(0x87, 2, 2, 2);
+	else if(strcmp(action_thread, "set_region_mexico") == 0)
+		set_region(0x88, 4, 1, 2);
+	else if(strcmp(action_thread, "set_region_australia") == 0)
+		set_region(0x89, 4, 2, 2);
+	else if(strcmp(action_thread, "set_region_asia") == 0)
+		set_region(0x8A, 3, 1, 2);
+	else if(strcmp(action_thread, "set_region_taiwan") == 0)
+		set_region(0x8B, 3, 1, 2);
+	else if(strcmp(action_thread, "set_region_russia") == 0)
+		set_region(0x8C, 5, 4, 2);
+	else if(strcmp(action_thread, "set_region_china") == 0)
+		set_region(0x8D, 6, 4, 2);
+	else if(strcmp(action_thread, "set_region_hongkong") == 0)
+		set_region(0x8E, 3, 1, 2);
+	else if(strcmp(action_thread, "set_region_brazil") == 0)
+		set_region(0x8F, 4, 1, 2);
+	else if(strcmp(action_thread, "set_region_default") == 0)
+		set_region_default();
+	else if(strcmp(action_thread, "check_region_values") == 0)
+		check_region_values();
 
 	// Rebug options	
 	/*else if(strcmp(action_thread, "normal_mode") == 0)	
 	{
 		if(normal_mode() == CELL_OK)
 		{
-			ShowMessage("msg_normal_mode", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_normal_mode", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 			wait(2);
-			xmb_reboot(SYS_SOFT_REBOOT);
+			rebootXMB(SYS_SOFT_REBOOT);
 		}
 	}
 	else if(strcmp(action_thread, "rebug_mode") == 0)	
 	{
 		if(rebug_mode() == CELL_OK)
 		{
-			ShowMessage("msg_rebug_mode", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_rebug_mode", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 			wait(2);
-			xmb_reboot(SYS_SOFT_REBOOT);
+			rebootXMB(SYS_SOFT_REBOOT);
 		}
 	}
 	else if(strcmp(action_thread, "debugsettings_mode") == 0)		
@@ -519,7 +574,7 @@ static void plugin_thread(uint64_t arg)
 		if(toggle_xmb_plugin() == CELL_OK)
 		{
 			wait(3);
-			xmb_reboot(SYS_SOFT_REBOOT);
+			rebootXMB(SYS_SOFT_REBOOT);
 		}
 	}
 	else if(strcmp(action_thread, "xmb_mode") == 0)	
@@ -527,7 +582,7 @@ static void plugin_thread(uint64_t arg)
 		if(toggle_xmb_mode() == CELL_OK)
 		{
 			wait(3);
-			xmb_reboot(SYS_SOFT_REBOOT);
+			rebootXMB(SYS_SOFT_REBOOT);
 		}
 	}*/
 	/*else if(strcmp(action_thread, "download_toolbox") == 0)	
@@ -539,12 +594,12 @@ static void plugin_thread(uint64_t arg)
 	else if(strcmp(action_thread, "rsod_fix") == 0)
 	{		
 		if(rsod_fix() == true)
-			xmb_reboot(SYS_HARD_REBOOT);
+			rebootXMB(SYS_HARD_REBOOT);
 	}	
 	else if(strcmp(action_thread, "service_mode") == 0)
 	{
 		if(!service_mode())
-			xmb_reboot(SYS_HARD_REBOOT);
+			rebootXMB(SYS_HARD_REBOOT);
 	}	
 	else if(strcmp(action_thread, "remarry_bd") == 0)			
 		remarry_bd();	
@@ -556,6 +611,10 @@ static void plugin_thread(uint64_t arg)
 		toggle_8th_spe();
 	else if(strcmp(action_thread, "patch_prodg") == 0)	
 		Patch_ProDG();
+	else if(strcmp(action_thread, "enable_dex_support") == 0)	
+		enable_dex_support();
+	else if(strcmp(action_thread, "disable_dex_support") == 0)	
+		disable_dex_support();
 	else if(strcmp(action_thread, "toggle_devblind") == 0)			
 		toggle_devblind();	
 	else if(strcmp(action_thread, "load_kernel") == 0)	
@@ -566,10 +625,8 @@ static void plugin_thread(uint64_t arg)
 		clean_log();
 	else if(strcmp(action_thread, "export_rap") == 0)	
 		export_rap();
-	else if(strcmp(action_thread, "dump_idps") == 0)	
-		dump_idps();	
-	else if(strcmp(action_thread, "dump_psid") == 0)	
-		dump_psid();		
+	else if(strcmp(action_thread, "dump_ids") == 0)	
+		dump_ids();	
 	else if(strcmp(action_thread, "dump_erk") == 0)	
 		dumpERK();		
 	else if(strcmp(action_thread, "dump_lv2") == 0)	
@@ -587,13 +644,47 @@ static void plugin_thread(uint64_t arg)
 	else if(strcmp(action_thread, "get_token_seed") == 0)	
 		get_token_seed();
 	else if(strcmp(action_thread, "dump_flash") == 0)	
-		dump_flash();
+		dumpFlash();
 	else if(strcmp(action_thread, "log_klic") == 0)	
 		log_klic();	
 	else if(strcmp(action_thread, "log_secureid") == 0)	
 		log_secureid();	
 	else if(strcmp(action_thread, "dump_disc_key") == 0)	
 		dump_disc_key();
+
+	// Rebug Toolbox
+	else if(strcmp(action_thread, "rbt_pp") == 0)	
+		rtb_pp();
+	else if(strcmp(action_thread, "rbt_lv2") == 0)	
+		rtb_option(LV1_LV2_OFFSET);
+	else if(strcmp(action_thread, "rbt_htab") == 0)	
+		rtb_option(LV1_HTAB_OFFSET);
+	else if(strcmp(action_thread, "rbt_indi") == 0)	
+		rtb_option(LV1_INDI_OFFSET);
+	else if(strcmp(action_thread, "rbt_um") == 0)	
+		rtb_option(LV1_UM_OFFSET);
+	else if(strcmp(action_thread, "rbt_dm") == 0)	
+		rtb_dm();
+	else if(strcmp(action_thread, "rbt_enc") == 0)	
+		rtb_option(LV1_ENC_OFFSET);
+	else if(strcmp(action_thread, "rbt_smgo") == 0)	
+		rtb_smgo();
+	else if(strcmp(action_thread, "rbt_pkg") == 0)	
+		rtb_option(LV1_PKG_OFFSET);
+	else if(strcmp(action_thread, "rbt_lpar") == 0)	
+		rtb_lpar();
+	else if(strcmp(action_thread, "rbt_spe") == 0)	
+		rtb_option(LV1_SPE_OFFSET);
+	else if(strcmp(action_thread, "rbt_dabr") == 0)	
+		rtb_option(LV1_DABR_OFFSET);
+	else if(strcmp(action_thread, "rbt_gart") == 0)	
+		rtb_option(LV1_GART_OFFSET);
+	else if(strcmp(action_thread, "rbt_keys") == 0)	
+		rtb_option(LV1_KEYS_OFFSET);
+	else if(strcmp(action_thread, "rbt_acl") == 0)	
+		rtb_acl();
+	else if(strcmp(action_thread, "rbt_go") == 0)	
+		rtb_go();
 
 	// OtherOS options
 	else if(strcmp(action_thread, "otheros_resize") == 0)	
@@ -632,12 +723,10 @@ static void plugin_thread(uint64_t arg)
 	else if(strcmp(action_thread, "enable_hvdbg") == 0)
 	{
 		if(enable_hvdbg() == true)
-			xmb_reboot(SYS_HARD_REBOOT);
+			rebootXMB(SYS_HARD_REBOOT);
 	}
 	else if(strcmp(action_thread, "usb_firm_loader") == 0)	
-		usb_firm_loader();	
-	else if(strcmp(action_thread, "toggle_dlna") == 0)	
-		toggle_dlna();	*/
+		usb_firm_loader();*/
 	
 	sys_ppu_thread_exit(0);
 }

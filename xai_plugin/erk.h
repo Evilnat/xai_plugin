@@ -27,5 +27,6 @@
 #define OPD_OFFSET				0x8000000000001630ULL
 
 void dumperk(void);
+int dump_eid_root_key(uint8_t output[0x30]);
 
 #endif

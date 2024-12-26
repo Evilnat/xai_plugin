@@ -57,12 +57,15 @@ File Manager
 Basic Tools
 • Show Total PS3 Usage: Shows the total days that the PS3 has been on, number of times it has been turned on and off
 • FAN Speed: Shows current FAN speed
-• PS3 Temperature: Shows current CPU and RSX temperature in Celsius or Fahrenheit
+• PS3 Temperature: Shows current CPU and RSX temperature in Celsius and Fahrenheit
 • Check GPU/VRAM clock speed: Checks current GPU/VRAM clock speed
 • Show IDPS: Shows current IDPS
 • Show PSID: Shows current PSID
 • Show IP: Show current IP if it exists
 • Toggle Coldboot: Toggles between custom/original coldboot.raf
+• Toggle Third Party BT Headset: Enables or diasbles usage of third party BT headset
+• Show BD Drive Information: Shows current BD Drive Information
+• Show XAI Version: Shows the current version of xai_plugin
 
 Basic Tools > xRegistry Tools
 • Backup xRegistry.sys: Creates a backup of xRegistry.sys to /dev_usb or /dev_hdd0
@@ -144,6 +147,7 @@ Cobra Tools
 • Allow Restore Syscalls: Allows restoring syscalls through "System Update"
 • Skip license creation: Skips overwriting license file (RIF) if it already exists
 • Create license: Creates RIF licenses from RAP files from "x:\exdata"
+• Toggle PS2 Disc Icon: Toggles between default and blue PS2 disc icon in XMB
 • Toggle Plugins: Enables/disables Cobra plugins from /dev_hdd0/boot_plugins.txt
 • Toggle Cobra Version: Toggles between release and debug versions (reboot is required)
 • Toggle Cobra: Enables or disables Cobra (reboot is required)
@@ -167,6 +171,7 @@ Dump Tools
 • Clean Log File: Resets /dev_hdd0/tmp/cfw_settings.log file
 • Dump IDPS: Saves IDPS to log file
 • Dump PSID: Saves PSID to log file
+• Export RAP license: Exports the RAP license from the RIF licenses installed in the current user account in /dev_usb/exdata
 • Dump LV2: Dumps LV2 to /dev_usb or /dev_hdd0/tmp
 • Dump LV1: Dumps LV1 to /dev_usb or /dev_hdd0/tmp
 • Dump Flash: Dumps NOR/NAND Flash to dev_hdd0/tmp or /dev_usb

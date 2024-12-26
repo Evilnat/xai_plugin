@@ -1,3 +1,6 @@
+#ifndef _LOG_H
+#define _LOG_H
+
 #include <stdio.h>
 
 void load_log_functions();
@@ -12,6 +15,7 @@ int sprintf_(char *str, const char *format, int v1, int v2);
 int sprintf_(char *str, const char *format, int v1, int v2, int v3);
 int sprintf_(char *str, const char *format, int v1, int v2, int v3, int v4);
 int sprintf_(char *str, const char *format, int v1, int v2, int v3, int v4, int v5);
+int sprintf_(char *str, const char *format, int v1, int v2, int v3, int v4, int v5, int v6);
 int sprintf_(char *str, const char *format, int v1, int v2, int v3, int v4, int v5, int v6, int v7, int v8);
 int sprintf_(char *str, const char *format, int v1, int v2, int v3, int v4, int v5, int v6, int v7, int v8, int v9, int v10, int v11, int v12, int v13, int v14, int v15, int v16);
 
@@ -25,6 +29,7 @@ int swprintf_(wchar_t *str, size_t size, const wchar_t *format, int v1, int v2, 
 int swprintf_(wchar_t *str, size_t size, const wchar_t *format, int v1, int v2, int v3, int v4, int v5, int v6, int v7);
 int swprintf_(wchar_t *str, size_t size, const wchar_t *format, int v1, int v2, int v3, int v4, int v5, int v6, int v7, int v8);
 int swprintf_(wchar_t *str, size_t size, const wchar_t *format, int v1, int v2, int v3, int v4, int v5, int v6, int v7, int v8, int v9);
+int swprintf_(wchar_t *str, size_t size, const wchar_t *format, int v1, int v2, int v3, int v4, int v5, int v6, int v7, int v8, int v9, int v10);
 
 void log(wchar_t *buffer);
 void log(char *buffer);
@@ -45,3 +50,5 @@ void notify(char *param);
 void notify(const char *format, int param1);
 void notify(const char *format, int param1, int param2);
 void notify(const char *format, int param1, int param2, int param3);
+
+#endif /* _LOG_H */

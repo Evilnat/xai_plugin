@@ -88,6 +88,7 @@ int console_write(const char * s)
 	system_call_4(403, 0, (uint64_t) s, std::strlen(s), (uint64_t) &len);
 	return_to_user_prog(int);
 }
+
 void log(char * buffer)
 {
 	console_write(buffer);
@@ -113,6 +114,7 @@ void log(char * buffer)
 	}
 	err = cellFsClose(fd);
 }
+
 void log(char * format, int param1)
 {
 	char tmp[0x100];

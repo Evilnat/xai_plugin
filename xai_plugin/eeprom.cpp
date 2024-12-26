@@ -104,11 +104,11 @@ error:
 static int dump_eeprom_data(uint32_t offset, char *location)
 {
 	CellFsStat stat;
-	char file_path[120];
+	char file_path[120], usb_path[120];
 	int result, i = 0;
-	int usb_found = 0;
+	int usb_port, fd_usb;
 	uint8_t value;
-	uint64_t write;
+	uint64_t write, write_usb;
 
 	sprintf_(file_path, "%s/0x%X.bin", (int)location, offset);	
 
@@ -133,14 +133,15 @@ static int dump_eeprom_data(uint32_t offset, char *location)
 			goto error;
 	}
 
-	log("DONE\n");
 	cellFsClose(fd);
+	cellFsClose(fd_usb);
 
 	return 0;
 
 error:
 	log("ERROR!\n");
 	cellFsClose(fd);
+	cellFsClose(fd_usb);
 	return 1;
 }
 
@@ -149,36 +150,36 @@ int dump_eeprom()
 {
 	CellFsStat stat;
 	uint8_t value;
-	char file[120], port[120], location[120];
+	char usb_location[120], location[120];
 	int result, i = 0;
-	int string, usb_found = 0;
+	int string, usb_port;
 
-	if(check_syscalls())
+	// HEN
+	if(!is_hen())
 	{
-		ShowMessage("msg_cfw_syscalls_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		showMessage("msg_hen_notsupported_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return 1;
+	}
+
+	if(checkSyscalls(LV1))
+	{
+		showMessage("msg_cfw_syscalls_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 		return 1;
 	}		
 
-	ShowMessage("msg_dump_eeprom_wait", (char *)XAI_PLUGIN, (char *)TEX_INFO2);	
+	showMessage("msg_dump_eeprom_wait", (char *)XAI_PLUGIN, (char *)TEX_INFO2);	
 
 	cellFsMkdir(TMP_FOLDER, 0777);
 	sprintf_(location, TMP_FOLDER, NULL);
 
-	// Detecting USB	
-	for(int i = 0; i < 127; i++) 
-	{
-		sprintf_(port, "/dev_usb%03d", i, NULL);
-
-		if(!cellFsStat(port, &stat))
-		{
-			sprintf_(location, "/dev_usb%03d", i);
-			usb_found = 1;
-			break;
-		}
-	}		
- 
 	if(patch_hv_checks())
 		goto error;
+
+	// Detecting USB
+	usb_port = get_usb_device();
+
+	if(usb_port != -1)
+		sprintf_(location, "/dev_usb%03d", usb_port, NULL);		
 	
 	if(dump_eeprom_data(0x2F00, location) != CELL_FS_SUCCEEDED)
 		goto error;
@@ -198,12 +199,17 @@ int dump_eeprom()
 	if(dump_eeprom_data(0x48D00, location) != CELL_FS_SUCCEEDED)
 		goto error;
 
-	restore_patches();			
+	restore_patches();
+
+	usb_port = get_usb_device();
+
+	if(usb_port != -1)
+		sprintf_(usb_location, "/dev_usb%03d", usb_port);
 
 	buzzer(SINGLE_BEEP);
 
 	string = RetrieveString("msg_dump_eeprom_done", (char*)XAI_PLUGIN);	
-	swprintf_(wchar_string, 120, (wchar_t*)string, (int)location);
+	swprintf_(wchar_string, 120, (wchar_t*)string, (int)(usb_port != -1 ? usb_location : location));
 	PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
 
 	return 0;
@@ -212,6 +218,6 @@ error:
 	restore_patches();	
 
 	buzzer(TRIPLE_BEEP);
-	ShowMessage("msg_dump_eeprom_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+	showMessage("msg_dump_eeprom_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 	return 1;
 }

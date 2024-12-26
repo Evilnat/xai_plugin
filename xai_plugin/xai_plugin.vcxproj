@@ -49,7 +49,7 @@
       <GenMicrocode>WhenOptimizing</GenMicrocode>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>$(SCE_PS3_ROOT)\target\ppu\lib\libfs_stub.a;$(SCE_PS3_ROOT)\target\ppu\lib\libsyscall.a;$(SCE_PS3_ROOT)\target\ppu\lib\libc.a;$(SCE_PS3_ROOT)\target\ppu\lib\librtc_stub.a;$(TargetDir)\cellPrx_videorec_stub.a;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(SCE_PS3_ROOT)\target\ppu\lib\libfs_stub.a;$(SCE_PS3_ROOT)\target\ppu\lib\libsyscall.a;$(SCE_PS3_ROOT)\target\ppu\lib\libc.a;$(SCE_PS3_ROOT)\target\ppu\lib\librtc_stub.a;$(SCE_PS3_ROOT)\target\ppu\lib\libsysutil_stub.a;$(TargetDir)\cellPrx_videorec_stub.a;$(SCE_PS3_ROOT)\target\ppu\lib\libsysutil_np_trophy_stub.a;$(SCE_PS3_ROOT)\target\ppu\lib\libsysmodule_stub.a;$(SCE_PS3_ROOT)\target\ppu\lib\hash\libmd5.a;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|PS3'">
@@ -103,6 +103,7 @@
     <ClInclude Include="ps3_savedata_plugin.h" />
     <ClInclude Include="qa.h" />
     <ClInclude Include="rebug.h" />
+    <ClInclude Include="rebugtoolbox.h" />
     <ClInclude Include="recording_settings.h" />
     <ClInclude Include="savegames.h" />
     <ClInclude Include="x3.h" />

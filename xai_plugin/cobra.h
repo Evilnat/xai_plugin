@@ -8,6 +8,9 @@
 #define PLUGINS_TXT_FILE_ENABLED	"/dev_hdd0/boot_plugins.txt"
 #define PLUGINS_TXT_FILE_DISABLED	"/dev_hdd0/boot_plugins.txt.bak"
 
+#define COBRA_USB_FLAG				"/dev_blind/sys/usb_flag"
+#define COBRA_USB_FLAG2				"/dev_flash/sys/usb_flag"
+
 #define FAN_DISABLED	0
 #define FAN_SYSCON		1
 #define DYNAMIC_FAN_60	2
@@ -15,7 +18,7 @@
 #define DYNAMIC_FAN_70	4
 #define DYNAMIC_FAN_75	5
 #define FAN_MANUAL		0x70
-#define FAN_MAX			0xFE
+#define FAN_MAX			0xFF
 
 // Manual Mode
 #define FAN_MANUAL_40	0x67
@@ -159,11 +162,22 @@
 
 #define PS3MAPI_OPCODE_CREATE_RIF 		 				0x2249
 
+#define PS3MAPI_OPCODE_GAMEBOOT 						0x2250
+#define PS3MAPI_OPCODE_EPILEPSY_WARNING					0x2251
+#define PS3MAPI_OPCODE_COLDBOOT 						0x2252
+
 #define SYSCALL8_OPCODE_STEALTH_TEST					0x3993
 #define SYSCALL8_OPCODE_STEALTH_ACTIVATE    			0x3995
 #define SYSCALL8_STEALTH_OK								0x5555 
 
 #define PS3MAPI_OPCODE_SUPPORT_SC8_PEEK_POKE_OK			0x6789
+
+// HEN
+#define SYSCALL8_OPCODE_POKE_LV2						0x7003
+#define SYSCALL8_OPCODE_IS_HEN							0x1337
+#define SYSCALL8_OPCODE_HEN_REV							0x1339
+#define SYSCALL8_OPCODE_GET_MAP_PATH					0x7967
+#define SYSCALL8_OPCODE_UNMAP_PATH						0x7962
 
 #ifdef DEBUG
 // These debug opcode changed to odd numbers in version 7.0 to minmize crashes with lv1 peek apps
@@ -185,7 +199,12 @@ typedef struct
 	uint8_t ps2_speed;			// 1 = SYSCON | 0x60 | 0x70 | 0x80 | 0x90
 	uint8_t allow_restore_sc; 	// 0 = Does not allow to restore CFW syscalls | 1 = Allow to restore CFW syscalls 
 	uint8_t skip_existing_rif;  // 0 = Does not skip if .rif already exists | 1 = Skip if .rif already exists
-	uint8_t color_disc; 	   // 0 = Default (PS2 CD/DVD: blue disc icon) | 1 = (PS2 DVD: yellow disc icon - PS2 CD: blue disc icon)
+	uint8_t color_disc; 	    // 0 = Default (PS2 DVD: yellow disc icon - PS2 CD: blue disc icon) | 1 = PS2 CD/DVD: blue disc icon
+	uint8_t syscalls_mode;      // 0 = CFW syscalls are enabled on boot (Default) | 1 = Fully disable CFW syscalls on boot | 2 = Keep PS3M_API Features only
+	uint8_t gameboot_mode; 	    // 0 = Disabled (Default) | 1 = Enabled
+	uint8_t epilepsy_warning;   // 0 = Disabled (Default) | 1 = Enabled
+	uint8_t coldboot_mode; 	    // 0 = Disabled | 1 = Enabled (Default)
+	uint8_t hidden_trophy_mode; // 0 = Enabled (Default)  | 1 = Disabled
 } __attribute__((packed)) CobraConfig;
 
 int check_syscall8();
@@ -198,10 +217,15 @@ int sys_get_version(uint32_t *version);
 int sys_get_version2(uint16_t *version);
 
 void toggle_plugins();
+int toggle_cobra();
+void toggle_external_cobra();
+int toggle_cobra_version();
 
 int cobra_load_vsh_plugin(int slot, char *path, void *arg, uint32_t arg_size);
 int ps3mapi_unload_vsh_plugin(char* name);
 int ps3mapi_get_vsh_plugin_info(unsigned int slot, char *name, char *filename);
+
+void create_cfw_syscalls();
 
 #endif /* _COBRA_H */
 

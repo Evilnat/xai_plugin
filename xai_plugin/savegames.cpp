@@ -80,38 +80,6 @@ void load_saves_functions()
 	setNIDfunc(xUserGetInterface, "xsetting", 0xCC56EB2D);
 }
 
-int readfile(const char *file, uint8_t *buffer, size_t size)
-{
-	int fd;
-	uint64_t read;
-
-	if(cellFsOpen(file, CELL_FS_O_RDWR, &fd, 0, 0) != SUCCEEDED)
-		return -1;
-
-	if(cellFsRead(fd, buffer, size, &read) != SUCCEEDED)
-		return -1;
-
-	cellFsClose(fd);
-
-	return SUCCEEDED;
-}
-
-int savefile(const char *path, void *data, size_t size)
-{
-	int file;
-	uint64_t write;	
-
-	if(cellFsOpen(path, CELL_FS_O_WRONLY | CELL_FS_O_CREAT | CELL_FS_O_TRUNC, &file, 0, 0) != SUCCEEDED)
-		return -1;
-
-	cellFsChmod(path, 0666);
-
-	cellFsWrite(file, data, size, &write);
-	cellFsClose(file);
-
-	return SUCCEEDED;	
-}
-
 static void generate_entry_hash(uint8_t real_key[0x14], uint8_t *buffer)
 {
 	uint64_t sha1[160];
@@ -133,7 +101,7 @@ static void generate_entry_hash(uint8_t real_key[0x14], uint8_t *buffer)
 	sha1_hmac_finish(buffer + Y_TABLE_OFFSET + 0x14 * 8, sha1);
 }
 
-int new_search_data(char *buf, char *str, int type, int mode, int overwrite, int checkEmpty, uint8_t output[16])
+int search_data(char *buf, char *str, int type, int mode, int overwrite, int checkEmpty, uint8_t output[16])
 {
 	int result = -1;
 	uint16_t offsetString = 0;
@@ -203,20 +171,24 @@ int set_accountID(int mode, int overwrite)
     sprintf_(accountid, SETTING_ACCOUNTID, userID, NULL);
 
 	uint8_t *dump = (uint8_t *)malloc__(XREGISTRY_FILE_SIZE);	
+
+	if(!dump)
+		return 4;
+
 	if(readfile(XREGISTRY_FILE, dump, XREGISTRY_FILE_SIZE))
 	{
 		free__(dump);
 		return 3;
 	}
 
-	ret = new_search_data((char *)dump, autoLogin, AUTOSIGN, WRITE, 0, 0, account_id);
+	ret = search_data((char *)dump, autoLogin, AUTOSIGN, WRITE, 0, 0, account_id);
 	if(ret == 2)
 	{
 		free__(dump);
 		return 2;
 	}
 
-	ret = new_search_data((char *)dump, accountid, ACCOUNTID, mode, overwrite, 0, account_id);
+	ret = search_data((char *)dump, accountid, ACCOUNTID, mode, overwrite, 0, account_id);
 	switch(ret)
 	{
 		free__(dump);
@@ -227,7 +199,7 @@ int set_accountID(int mode, int overwrite)
 			return 4;
 	}
 
-	savefile(XREGISTRY_FILE, dump, XREGISTRY_FILE_SIZE);
+	saveFile(XREGISTRY_FILE, dump, XREGISTRY_FILE_SIZE);
 
 	free__(dump);
 	return 0;
@@ -255,6 +227,9 @@ int patch_savedatas(const char *path)
 
 	uint8_t *dump = (uint8_t *)malloc__(XREGISTRY_FILE_SIZE);
 
+	if(!dump)
+		return -1;
+
 	if(cellFsStat(path_file, &stat) == SUCCEEDED)
 	{
 		if(readfile(XREGISTRY_FILE, dump, XREGISTRY_FILE_SIZE))
@@ -264,7 +239,7 @@ int patch_savedatas(const char *path)
 		}
 
 		// Getting accountID from current logged user
-		if(new_search_data((char *)dump, acc_char, ACCOUNTID, READ, 0, 0, account_id))
+		if(search_data((char *)dump, acc_char, ACCOUNTID, READ, 0, 0, account_id))
 			return 2;
 				
 		// Read and retrieve PARAM.SFO data		
@@ -395,14 +370,14 @@ int patch_savedatas(const char *path)
 			
 
 			// Write new files
-			if(savefile(sfo_data.file_path, temp_data_sfo, sfo_data.size))
+			if(saveFile(sfo_data.file_path, temp_data_sfo, sfo_data.size))
 			{
 				free__(temp_data_sfo);	
 				free__(temp_data_pfd);
 				return 7;
 			}
 
-			if(savefile(pfd_data.file_path, temp_data_pfd, pfd_data.size))
+			if(saveFile(pfd_data.file_path, temp_data_pfd, pfd_data.size))
 			{
 				free__(temp_data_sfo);	
 				free__(temp_data_pfd);
@@ -425,15 +400,13 @@ int export_rap()
 {	
 	int fd, ret, i, round_num, string, usb_port;
 	char exdata_path[120], actdat_path[120];
-	char license_file[120], contentID[36], USB[120];
+	char license_file[120], contentID[36], exdata_folder[120];
 
 	CellFsDirent dir;	
 	CellFsStat statinfo;
 
 	struct rif_t rif;
 	struct actdat_t *actdat = NULL;	
-
-	bool usb_found = false;
 	
 	uint8_t padding[0x0C];
 	uint8_t encrypted[0x10], decrypted[0x10];
@@ -445,29 +418,23 @@ int export_rap()
 	wchar_t wchar_string[120];
 	int rap_created = 0;
 
-	for(int i = 0; i < 127; i++)
-	{
-		sprintf_(USB, "/dev_usb%03d", i, NULL);
+	usb_port = get_usb_device();
 
-		if(!cellFsStat(USB, &statinfo))
-		{
-			usb_found = 1;
-			usb_port = i;
-			break;
-		}
-	}
-
-	if(!usb_found)
+	if(usb_port == -1)
 	{
-		ShowMessage("msg_usb_not_detected", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
+		showMessage("msg_usb_not_detected", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
 		return 1;
 	}
+
+	sprintf_(exdata_folder, "/dev_usb%03d/exdata", usb_port);
+	if(cellFsStat(exdata_folder, &statinfo))
+		cellFsMkdir(exdata_folder, 0777);
 
 	if(sys_ss_get_console_id(idps) == EPERM)
 	{
 		if(GetIDPS(idps) != CELL_OK)
 		{
-			ShowMessage("msg_idps_dump_fail", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+			showMessage("msg_idps_dump_fail", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 			return 1;
 		}
 	}	
@@ -511,7 +478,7 @@ int export_rap()
 
 			if(readfile(actdat_path, (uint8_t *)actdat, 0x1038) != CELL_FS_SUCCEEDED)
 			{
-				ShowMessage("msg_account_act_not_found", (char*)XAI_PLUGIN, (char*)TEX_ERROR);	
+				showMessage("msg_account_act_not_found", (char*)XAI_PLUGIN, (char*)TEX_ERROR);	
 				goto error;
 			}
 
@@ -553,10 +520,10 @@ int export_rap()
 			}			
    
 			if(AesCbcCfbEncrypt(rap_key, key, 0x10, rap_initial_key, 128, null_iv) != SUCCEEDED)
-				goto error;
+				goto error;			
 
-			sprintf_(license_file, "%s/exdata/%s.rap", (int)USB, (int)contentID);
-			if(savefile(license_file, rap_key, 0x10) != 0)
+			sprintf_(license_file, "/dev_usb%03d/exdata/%s.rap", usb_port, (int)contentID);
+			if(saveFile(license_file, rap_key, 0x10) != 0)
 			{
 				error:
 				free__(actdat);
@@ -573,8 +540,8 @@ int export_rap()
 					swprintf_(wchar_string, 120, (wchar_t*)string, rap_created);
 					PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_ERROR);
 				}
-				else
-					ShowMessage("msg_rif_created", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+				else if(rap_created == 1)
+					showMessage("msg_rif_created", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
 
 				log("Error while exporting %s\n", license_file);
 
@@ -596,13 +563,13 @@ int export_rap()
 				PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
 			}
 			else
-				ShowMessage("msg_rif_created", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);	
+				showMessage("msg_rif_created", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);	
 
 			return 0;
 		}
 	}
 
-	ShowMessage("msg_rif_not_found", (char*)XAI_PLUGIN, (char*)TEX_ERROR);	
+	showMessage("msg_rif_not_found", (char*)XAI_PLUGIN, (char*)TEX_ERROR);	
 	cellFsClosedir(fd);
 	return 0;
 }

@@ -21,6 +21,9 @@
 #define TRIPLE_BEEP 							0x1B6
 #define CONTINUOUS_BEEP							0xFFFF
 
+#define LV2										0
+#define LV1										1
+
 #define SIGNIN_RCO_LOCK		"/dev_flash/vsh/resource/npsignin_plugin.lck"
 #define SIGNIN_RCO_UNLOCK	"/dev_flash/vsh/resource/npsignin_plugin.rco"
 
@@ -51,6 +54,178 @@ typedef struct
     uint8_t     unknown06[3];
     uint32_t    unknown07;
 } __attribute__((__packed__)) device_info_t;
+
+typedef struct
+{
+	uint16_t version; 
+
+	uint8_t padding0[12];
+
+	uint8_t artemis;  
+	uint8_t wm_proxy; 
+	uint8_t lang;     
+
+	// Scan devices settings
+	uint8_t usb0;    
+	uint8_t usb1;    
+	uint8_t usb2;    
+	uint8_t usb3;    
+	uint8_t usb6;    
+	uint8_t usb7;    
+	uint8_t dev_sd;  
+	uint8_t dev_ms;  
+	uint8_t dev_cf;  
+	uint8_t ntfs;    
+
+	uint8_t padding1[5];
+
+	// Scan content settings
+	uint8_t refr;  
+	uint8_t foot;  
+	uint8_t cmask; 
+
+	uint8_t nogrp;   
+	uint8_t nocov;   
+	uint8_t nosetup; 
+	uint8_t rxvid;   
+	uint8_t ps2l;    
+	uint8_t pspl;    
+	uint8_t tid;     
+	uint8_t use_filename;  
+	uint8_t launchpad_xml; 
+	uint8_t launchpad_grp; 
+	uint8_t gamei;   
+	uint8_t roms;   
+	uint8_t noused; 
+	uint8_t info;   
+	uint8_t npdrm;  
+	uint8_t vsh_mc; 
+	uint8_t ignore; 
+	uint8_t root;   
+
+	uint8_t padding2[11];
+
+	// Start up settings
+	uint8_t wmstart; 
+	uint8_t lastp;   
+	uint8_t autob;   
+	char autoboot_path[256]; 
+	uint8_t delay;   
+	uint8_t bootd;   
+	uint8_t boots;   
+	uint8_t nospoof; 
+	uint8_t blind;   
+	uint8_t spp;     
+	uint8_t noss;    
+	uint8_t nosnd0;  
+	uint8_t dsc;     
+	uint8_t noBD;    
+	uint8_t music;   
+
+	uint8_t padding3[2];
+
+	// Fan control settings
+	uint8_t fanc;      
+	uint8_t man_speed; 
+	uint8_t dyn_temp;  
+	uint8_t man_rate;  
+	uint8_t ps2_rate;  
+	uint8_t nowarn;    
+	uint8_t minfan;    
+	uint8_t chart;     
+	uint8_t maxfan;    
+
+	uint8_t padding4[7];
+
+	// Combo settings
+	uint8_t  nopad;      
+	uint8_t  keep_ccapi; 
+	uint32_t combo;      
+	uint32_t combo2;     
+	uint8_t  sc8mode;    
+	uint8_t  nobeep;     
+
+	uint8_t padding5[20];
+
+	// FTP server settings
+	uint8_t  bind;         
+	uint8_t  ftpd;         
+	uint16_t ftp_port;     
+	uint8_t  ftp_timeout;  
+	char ftp_password[20];
+	char allow_ip[16]; 
+
+	uint8_t padding6[7];
+
+	// Net server settings
+	uint8_t  netsrvd;  
+	uint16_t netsrvp;  
+
+	uint8_t padding7[13];
+
+	// Net client settings
+	uint8_t   netd[5];
+	uint16_t  netp[5];
+	char neth[5][16];
+
+	uint8_t nsd;
+	uint8_t padding8[32];
+
+	// Mount settings
+	uint8_t bus;       
+	uint8_t fixgame;   
+	uint8_t ps1emu;    
+	uint8_t autoplay;  
+	uint8_t ps2emu;    
+	uint8_t ps2config; 
+	uint8_t minfo;     
+	uint8_t deliso;    
+	uint8_t auto_install_pkg; 
+	uint8_t app_home;  
+
+	uint8_t padding9[6];
+
+	// Profile settings
+	uint8_t profile;          
+	char uaccount[9];    
+	uint8_t admin_mode;       
+	uint8_t unlock_savedata;  
+
+	uint8_t padding10[4];
+
+	// Misc settings
+	uint8_t default_restart;  
+	uint8_t poll;             
+
+	uint32_t rec_video_format;
+	uint32_t rec_audio_format;
+
+	uint8_t auto_power_off; 
+
+	uint8_t ps3mon; 
+
+	uint8_t padding12[4];
+
+	uint8_t homeb; 
+	char home_url[255]; 
+
+	uint8_t sman;     
+	uint8_t msg_icon; 
+
+	uint8_t padding11[30];
+
+	// Spoof console id
+	uint8_t sidps; 
+	uint8_t spsid; 
+	char vIDPS1[17];
+	char vIDPS2[17];
+	char vPSID1[17];
+	char vPSID2[17];
+
+	uint8_t padding13[24];
+
+	uint8_t resource_id[12];
+} __attribute__((packed)) WebmanCfg;
 
 int mount_dev_blind();
 int umount_dev_blind();
@@ -86,6 +261,7 @@ uint8_t lv1_peek8(uint64_t addr);
 uint32_t lv1_peek32(uint64_t addr);
 void lv1_poke(uint64_t addr, uint64_t value);
 void lv1_poke32(uint64_t addr, uint32_t value);
+uint64_t lv1_peek_cobra(uint64_t addr);
 
 // LV2 Peek/Poke
 uint64_t lv2_peek(uint64_t addr);
@@ -98,7 +274,7 @@ void lv2_poke16(uint64_t addr, uint16_t value);
 void lv2_poke32(uint64_t addr, uint32_t value); 
 
 int sys_sm_shutdown(uint16_t op);
-void xmb_reboot(uint16_t op);
+void rebootXMB(uint16_t op);
 
 uint32_t GetApplicableVersion(void *data);
 
@@ -121,10 +297,18 @@ int sys_sm_get_system_info(system_info *unknown0);
 uint32_t lv2_ss_update_mgr_if(uint32_t packet_id, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4, uint64_t arg5, uint64_t arg6);
 int sys_sm_request_error_log(uint8_t offset, uint8_t *unknown0, uint32_t *unknown1, uint32_t *unknown2);
 
-int check_syscalls();
+int checkSyscalls(int mode);
 
 void buzzer(uint8_t mode);
 
 int check_flash_free_space();
+
+int lv2_gelic_eurus_control(uint16_t cmd, uint8_t *cmdbuf, uint64_t cmdbuf_size);
+
+int is_hen();
+int sys_ss_secure_rtc(uint64_t time);
+int sysGetCurrentTime(uint64_t *sec, uint64_t *nsec);
+int sysSetCurrentTime(uint64_t sec, uint64_t nsec);
+int sys_time_get_rtc(uint64_t *real_time_clock);
 
 #endif

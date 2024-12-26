@@ -106,9 +106,7 @@ static uint8_t idps_const[0x10] =
 };
 
 void load_saves_functions();
-int readfile(const char *file, uint8_t *buffer, size_t size);
-int savefile(const char *path, void *data, size_t size);
-int new_search_data(char *buf, char *str, int type, int mode, int overwrite, int checkEmpty, uint8_t output[16]);
+int search_data(char *buf, char *str, int type, int mode, int overwrite, int checkEmpty, uint8_t output[16]);
 int patch_savedatas(const char *path);
 int set_accountID(int mode, int overwrite);
 

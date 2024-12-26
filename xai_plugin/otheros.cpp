@@ -7,6 +7,7 @@
 #include <string.h>
 #include <sys/timer.h>
 #include <cell/fs/cell_fs_file_api.h>
+#include <cell/hash/libmd5.h>
 #include "otheros.h"
 #include "savegames.h"
 #include "functions.h"
@@ -19,6 +20,13 @@ int setup_vflash()
 	uint8_t buf[VFLASH_SECTOR_SIZE * VFLASH_SECTOR_COUNT];
 	uint32_t dev_handle = 0, unknown;	
 	uint64_t *ptr;
+
+	// HEN
+	if(!is_hen())
+	{
+		showMessage("msg_hen_notsupported_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return 1;
+	}
 
 	close_xml_list();
 
@@ -52,13 +60,13 @@ int setup_vflash()
 	sys_timer_usleep(10000);	
 	lv2_storage_close(dev_handle);
 
-	ShowMessage("msg_otheros_resize_success", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+	showMessage("msg_otheros_resize_success", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 
 	return 0;
 
 error:
 	lv2_storage_close(dev_handle);
-	ShowMessage("msg_otheros_resize_vflash_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+	showMessage("msg_otheros_resize_vflash_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 	return 1;
 }
 
@@ -68,6 +76,13 @@ int setup_flash()
 	uint8_t buf[FLASH_SECTOR_SIZE * FLASH_SECTOR_COUNT];
 	uint32_t unknown, dev_handle = 0;	
 	uint64_t *ptr;
+
+	// HEN
+	if(!is_hen())
+	{
+		showMessage("msg_hen_notsupported_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return 1;
+	}
 
 	close_xml_list();
 
@@ -108,21 +123,23 @@ int setup_flash()
 	sys_timer_usleep(10000);
 	lv2_storage_close(dev_handle);
 
-	ShowMessage("msg_otheros_resize_success", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+	showMessage("msg_otheros_resize_success", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 
 	return 0;
 
 error:
 	lv2_storage_close(dev_handle);
-	ShowMessage("msg_otheros_resize_flash_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+	showMessage("msg_otheros_resize_flash_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 	return 1;
 }
 
 int install_petitboot()
 {
-	int fd;
+	int fd, bytes;
 	int file_sectors, start_sector, sector_count;	
-	
+
+	FILE *file_md5;
+	CellMd5WorkArea mdContext;	
 	CellFsStat stat;
 	uint8_t buf[VFLASH5_SECTOR_SIZE * 16];
 	uint32_t dev_handle = 0, unknown;
@@ -134,7 +151,15 @@ int install_petitboot()
 	struct os_area_db *db;	
 
 	char filename[120];
+	unsigned char checksum[0x10], data[1024];
 	int file_found = 0;
+
+	// HEN
+	if(!is_hen())
+	{
+		showMessage("msg_hen_notsupported_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return 1;
+	}
 
 	close_xml_list();
 
@@ -157,14 +182,38 @@ int install_petitboot()
 	if(!file_found)
 	{
 		if(flashType)
-			ShowMessage("msg_otheros_nor_file_not_found", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+			showMessage("msg_otheros_nor_file_not_found", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 		else
-			ShowMessage("msg_otheros_nand_file_not_found", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+			showMessage("msg_otheros_nand_file_not_found", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 
 		return 1;
 	}
 
-	ShowMessage("msg_otheros_petitboot_installing", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
+	showMessage("msg_otheros_petitboot_md5_check", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
+
+	/* Check MD5 */
+	// dtbImage.ps3.bin (NOR) = CA5E9520E03066290F68F67E9167C0FA  
+	// dtbImage.ps3.bin.minimal (NAND) = 6B98E0AC2413CB77659179468F6AD0B5  
+	uint8_t nor_image_md5[0x10] = { 0xCA, 0x5E, 0x95, 0x20, 0xE0, 0x30, 0x66, 0x29, 0x0F, 0x68, 0xF6, 0x7E, 0x91, 0x67, 0xC0, 0xFA };
+	uint8_t nand_image_md5[0x10] = { 0x6B, 0x98, 0xE0, 0xAC, 0x24, 0x13, 0xCB, 0x77, 0x65, 0x91, 0x79, 0x46, 0x8F, 0x6A, 0xD0, 0xB5 };
+	
+	cellMd5BlockInit(&mdContext);
+
+	file_md5 = fopen__(filename, "rb");
+
+	while((bytes = (int)fread__(data, 1, 1024, file_md5)) != 0)	
+        cellMd5BlockUpdate(&mdContext, data, bytes);
+
+	cellMd5BlockResult(&mdContext, checksum);
+	fclose__(file_md5);
+
+	if(memcmp(checksum, (flashType ? nor_image_md5 : nand_image_md5), 0x10))
+	{
+		showMessage("msg_otheros_petitboot_md5_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return 1;
+	}
+
+	showMessage("msg_otheros_petitboot_installing", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
 
 	if(cellFsStat(filename, &stat) == CELL_FS_SUCCEEDED)
 	{
@@ -236,7 +285,7 @@ int install_petitboot()
 
 			lv2_storage_close(dev_handle);	
 
-			ShowMessage("msg_otheros_petitboot_success", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			showMessage("msg_otheros_petitboot_success", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 
 			return 0;
 		}	
@@ -244,7 +293,7 @@ int install_petitboot()
 
 error:
 	lv2_storage_close(dev_handle);	
-	ShowMessage("msg_otheros_petitboot_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+	showMessage("msg_otheros_petitboot_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 
 	return 1;
 }
@@ -266,9 +315,16 @@ int set_flag(int flag)
 	struct os_area_params *params;
 	struct storage_device_info info;	
 
+	// HEN
+	if(!is_hen())
+	{
+		showMessage("msg_hen_notsupported_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return 1;
+	}
+
 	if(flag > 1 && flag < 0)
 	{
-		ShowMessage("msg_otheros_flag_invalid", (char *)XAI_PLUGIN, (char *)TEX_ERROR);		
+		showMessage("msg_otheros_flag_invalid", (char *)XAI_PLUGIN, (char *)TEX_ERROR);		
 		return 1;
 	}
 
@@ -320,12 +376,12 @@ int set_flag(int flag)
 
 	if(flag)
 	{
-		ShowMessage("msg_otheros_flag_oo", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);				
+		showMessage("msg_otheros_flag_oo", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);				
 		wait(3);
-		xmb_reboot(SYS_LV2_REBOOT);
+		rebootXMB(SYS_LV2_REBOOT);
 	}
 	else
-		ShowMessage("msg_otheros_flag_go", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+		showMessage("msg_otheros_flag_go", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 	
 	return 0;
 

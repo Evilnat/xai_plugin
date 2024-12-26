@@ -62,13 +62,13 @@
 
 struct storage_device_info 
 {
-		uint8_t res1[32];
-		uint32_t vendor_id;
-		uint32_t device_id;
-		uint64_t capacity;
-		uint32_t sector_size;
-		uint32_t media_count;
-		uint8_t res2[8];
+	uint8_t res1[32];
+	uint32_t vendor_id;
+	uint32_t device_id;
+	uint64_t capacity;
+	uint32_t sector_size;
+	uint32_t media_count;
+	uint8_t res2[8];
 };
 
 enum os_area_ldr_format 

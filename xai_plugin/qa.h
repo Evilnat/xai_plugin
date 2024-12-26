@@ -35,8 +35,9 @@
 
 #define QA_FLAG_OFFSET 		0x48C0A
 
-#define ENABLE				1
 #define DISABLE				0
+#define BASIC				1
+#define FULL				2
 
 
 enum ps3dm_function_packet 
