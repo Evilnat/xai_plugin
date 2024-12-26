@@ -55,6 +55,9 @@ File Manager
 • Memory Cards: Manage memory cards
 
 Basic Tools
+• Decrypt 3k3y/Redump ISOs (HDD): Decrypts 3k33y/redump ISOs from dev_hdd0/PS3ISO with 'd1/disc' key file if it is available
+• Decrypt 3k3y/Redump ISOs (USB): Decrypts 3k33y/redump ISOs from dev_usb/PS3ISO with 'd1/disc' key file if it is available
+• Fix CBOMB: Patches RTC with static value (default) or current updated PS3 system date. Useful for PS3 with dead CMOS battery
 • Show Total PS3 Usage: Shows the total days that the PS3 has been on, number of times it has been turned on and off
 • FAN Speed: Shows current FAN speed
 • PS3 Temperature: Shows current CPU and RSX temperature in Celsius and Fahrenheit
@@ -144,11 +147,20 @@ Cobra Tools
 • Disable PSN Protection: Enables PSN login when syscalls are enabled
 • Enable FTP: Enables FTP connection in port 21
 • Disable FTP: Disables FTP connection
+• Enable TrophyUnlocker: Enables TrophyUnlocker INGAME plugin
+• Disable TrophyUnlocker: Disables TrophyUnlocker INGAME plugin
 • Allow Restore Syscalls: Allows restoring syscalls through "System Update"
 • Skip license creation: Skips overwriting license file (RIF) if it already exists
 • Create license: Creates RIF licenses from RAP files from "x:\exdata"
 • Toggle PS2 Disc Icon: Toggles between default and blue PS2 disc icon in XMB
 • Toggle Plugins: Enables/disables Cobra plugins from /dev_hdd0/boot_plugins.txt
+• Toggle OFW Mode on Boot: Toggles between CFW syscalls on boot enabled, disabled and partial
+• Toggle PS2 Disc Icon: Toggles between default and blue PS3 disc icon in XMB
+• Toggle Gameboot: Enables or disables original PLAYSTATION 3 gameboot when statring a game or application
+• Toggle Hidden Trophy Info: Enables or disables hidden trophies title, details and icon in XMB/INGMAE
+• Toggle Coldboot Animation: Enables or disables the coldboot animation and sound on boot
+• Toggle Epilepsy Warning: Enables or disables epilepsy warning on boot
+• Toggle External Cobra: Enables/disables loading external Cobra payloads and plugins from /dev_usb000
 • Toggle Cobra Version: Toggles between release and debug versions (reboot is required)
 • Toggle Cobra: Enables or disables Cobra (reboot is required)
 
