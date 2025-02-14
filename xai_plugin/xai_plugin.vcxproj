@@ -97,7 +97,6 @@
     <ClInclude Include="hvcall.h" />
     <ClInclude Include="log.h" />
     <ClInclude Include="mm.h" />
-    <ClInclude Include="npsignin_plugin.h" />
     <ClInclude Include="otheros.h" />
     <ClInclude Include="payload.h" />
     <ClInclude Include="ps3_savedata_plugin.h" />

@@ -10,34 +10,18 @@
 #define PS3DM_PID(fid, id)	((fid) | (id))
 #define PS3DM_FID(pid)		((pid) & ~0xffful)
 
-// These may change on each firmware version
-// ----------------------------------------------
-#define IDPS_LV1 			0x8000000000064E80ULL
-#define UM_PATCH_OFFSET		0x80000000000FEBD4ULL
-#define DM_PATCH1_OFFSET	0x800000000016FA64ULL
-#define DM_PATCH2_OFFSET	0x800000000016FA88ULL
-#define DM_PATCH3_OFFSET	0x800000000016FB00ULL
-#define DM_PATCH4_OFFSET	0x800000000016FB08ULL
+#define HV_BASE					0x8000000014000000ULL
 
-#define UM_PATCH_ORI	 	0xE8180008
-#define DM_PATCH1_ORI	 	0xF8010098
-#define DM_PATCH2_ORI	 	0x4BFFF0E5
-#define DM_PATCH3_ORI	 	0x38A10070
-#define DM_PATCH4_ORI	 	0x48006065
-// ----------------------------------------------
+#define HV_SIZE 				0x001000	
+#define HV_PAGE_SIZE			0x0C	
 
-#define HV_BASE				0x8000000014000000ULL
+#define TOKEN_SIZE				0x50
 
-#define HV_SIZE 			0x001000	
-#define HV_PAGE_SIZE		0x0C	
+#define QA_FLAG_OFFSET 			0x48C0A
 
-#define TOKEN_SIZE			0x50
-
-#define QA_FLAG_OFFSET 		0x48C0A
-
-#define DISABLE				0
-#define BASIC				1
-#define FULL				2
+#define DISABLE					0
+#define BASIC					1
+#define FULL					2
 
 
 enum ps3dm_function_packet 

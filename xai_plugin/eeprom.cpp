@@ -15,100 +15,59 @@
  * Thanks to zecoxao for providing me the SRC
  */
 
+/*
+ *	This file contains data for different versions of FW
+ *	It is possible that support for some more may need to be added
+ */
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdint.h>
 #include <cell/fs/cell_fs_file_api.h>
+#include "eeprom.h"
 #include "log.h"
 #include "functions.h"
 #include "cfw_settings.h"
+#include "cex2dex.h"
 
 int fd;
 char output[120];
 static wchar_t wchar_string[120]; // Global variable for swprintf
-uint64_t ori_patch1, ori_auth_check, ori_write_eeprom;
 
-// peek and poke dynamically lv1 - no more toc/fw check needed ^_^
-uint64_t auth_check = 0x16FB64; // auth_check poke-offset CEX/DEX 4.75
-uint64_t write_eeprom = 0xFEBD4; // eeprom_write_access poke-offset CEX/DEX 4.75
-uint64_t patch1 = 0xFC4D8;
+static uint64_t auth_check_offset, um_read_eeprom_offset, um_write_eeprom_offset;
+static uint64_t um_nspmo_eeprom_offset, scm_read_eeprom_offset, scm_write_eeprom_offset;
 
-
-static void restore_patches()
-{
-	lv1_poke(patch1, ori_patch1);
-	lv1_poke(auth_check, ori_auth_check);
-	lv1_poke(write_eeprom, ori_write_eeprom);	
-}
-
-static int patch_hv_checks()
+// LV1 Patches for read/write EEPROM (Thanks to M4j0R)
+static patches_eeprom patch_hv_checks[6] =
 {	
-	ori_patch1 = lv1_peek(patch1);
-	ori_auth_check = lv1_peek(auth_check);
-	ori_write_eeprom = lv1_peek(write_eeprom);
-	
-	lv1_poke(patch1, 0x2F8000032F800003ULL);
-	
-	if(lv1_peek(auth_check) != 0x2F800000409E0050ULL)
-	{ 
-		auth_check = 0;
+	{ 0, 0x48000050ULL, 0x409E0050ULL },
+	{ 0, 0x60000000ULL, 0x419D0054ULL },
+	{ 0, 0x60000000ULL, 0x419D02B4ULL },
+	{ 0, 0x38000000ULL, 0xE8180008ULL },
+	{ 0, 0x4800003CULL, 0x409D0074ULL },
+	{ 0, 0x4800003CULL, 0x409D0074ULL },
+};
 
-		for(uint64_t addr = 0xA000; addr < 0x800000ULL; addr += 4)
-		{
-			if(lv1_peek(addr) == 0x4BFFFF8888010070ULL)
-			{ 
-				auth_check = addr + 8;
-				ori_auth_check = lv1_peek(auth_check);
-				break;
-			}
-		}
-
-		if(!auth_check)
-			goto error;
+uint64_t findValueinLV1(uint64_t min_offset, uint64_t max_offset, uint64_t value)
+{
+	for(uint64_t offset = min_offset; offset < max_offset; offset += 4)
+	{
+		if(lv1_peek(offset) == value)
+			return offset;
 	}
-
-	if(auth_check && lv1_peek(auth_check) == 0x2F800000409E0050ULL)
-		lv1_poke(auth_check, 0x2F80000048000050ULL);
-		
-	if(lv1_peek(write_eeprom) != 0xE81800082FA00000ULL)
-	{ 
-		write_eeprom = 0;
-		
-		for(uint64_t addr = 0xA000; addr < 0x800000ULL; addr += 4)
-		{ 
-			if(lv1_peek(addr) == 0x2F8000FF419E0088ULL)
-			{ 
-				write_eeprom = addr + 28;
-				ori_write_eeprom = lv1_peek(write_eeprom);
-				break;
-			}
-		}
-
-		if(!write_eeprom)
-			goto error;
-	}
-
-	if(write_eeprom && lv1_peek(write_eeprom) == 0xE81800082FA00000ULL)
-		lv1_poke(write_eeprom, 0x380000002FA00000ULL);
 
 	return 0;
-
-error:
-	restore_patches();
-
-	return 1;
 }
 
 static int dump_eeprom_data(uint32_t offset, char *location)
 {
 	CellFsStat stat;
-	char file_path[120], usb_path[120];
-	int result, i = 0;
-	int usb_port, fd_usb;
+	char file_path[120];
+	int result;
 	uint8_t value;
-	uint64_t write, write_usb;
+	uint64_t write;
 
 	sprintf_(file_path, "%s/0x%X.bin", (int)location, offset);	
 
@@ -119,7 +78,7 @@ static int dump_eeprom_data(uint32_t offset, char *location)
 
 	log("Dumping %X.bin...\n", (int)offset);
 
-	for(i = offset; i < offset + 0x100; i++)
+	for(int i = offset; i < offset + 0x100; i++)
 	{
 		result = lv2_ss_update_mgr_if(UPDATE_MGR_PACKET_ID_READ_EEPROM, i, (uint64_t) &value, 0, 0, 0, 0);
 
@@ -134,24 +93,79 @@ static int dump_eeprom_data(uint32_t offset, char *location)
 	}
 
 	cellFsClose(fd);
-	cellFsClose(fd_usb);
 
 	return 0;
 
 error:
 	log("ERROR!\n");
 	cellFsClose(fd);
-	cellFsClose(fd_usb);
 	return 1;
 }
 
+static void restoreLV1patches()
+{
+	for(int i = 0; i <= 5; i++)
+		lv1_poke32(patch_hv_checks[i].offset, patch_hv_checks[i].ori);
+}
+
+static int makeLV1patches()
+{
+	char patch_state[120];
+	uint64_t ori_value;
+
+	// Search offset in LV1
+	auth_check_offset = findValueinLV1(0x150000, 0x180000, 0x4BFFFF8888010070ULL);
+
+	um_read_eeprom_offset = findValueinLV1(0xFB000, 0xFF000, 0x3D29FFFB380973CFULL);
+	if(!um_read_eeprom_offset)
+		um_read_eeprom_offset = findValueinLV1(0x700000, 0x710000, 0x3D29FFFB380973CFULL);
+
+	um_write_eeprom_offset = findValueinLV1(0xFA000, 0xFF000, 0x380973BD3BE00009ULL);
+	if(!um_write_eeprom_offset)
+		um_write_eeprom_offset = findValueinLV1(0x700000, 0x710000, 0x380973BD3BE00009ULL);
+
+	um_nspmo_eeprom_offset = findValueinLV1(0xFA000, 0xFF000, 0x7FC3F3784802D40DULL);
+	if(!um_nspmo_eeprom_offset)
+		um_nspmo_eeprom_offset = findValueinLV1(0x700000, 0x710000, 0x7FC3F3784802D40DULL);
+
+	scm_read_eeprom_offset = findValueinLV1(0xB8000, 0xBB000, 0x4800C955817C0000ULL);
+	if(!scm_read_eeprom_offset)
+		scm_read_eeprom_offset = findValueinLV1(0x1B0000, 0x1F0000, 0x4800C955817C0000ULL);
+
+	scm_write_eeprom_offset = findValueinLV1(0xB8000, 0xBB000, 0x4800C679817C0000ULL);	
+	if(!scm_write_eeprom_offset)
+		scm_write_eeprom_offset = findValueinLV1(0x1B0000, 0x1F0000, 0x4800C679817C0000ULL);	
+
+	if(!auth_check_offset || !um_read_eeprom_offset || !um_write_eeprom_offset || 
+		!um_nspmo_eeprom_offset || !scm_read_eeprom_offset || !scm_write_eeprom_offset)
+		return 1;
+
+	patch_hv_checks[0].offset = auth_check_offset + 0x0C;
+	patch_hv_checks[1].offset = um_read_eeprom_offset + 0x4C;
+	patch_hv_checks[2].offset = um_write_eeprom_offset + 0x0C;
+	patch_hv_checks[3].offset = um_nspmo_eeprom_offset + 8;
+	patch_hv_checks[4].offset = scm_read_eeprom_offset + 0x10;
+	patch_hv_checks[5].offset = scm_write_eeprom_offset + 0x10;
+
+	for(int i = 0; i <= 5; i++)
+	{
+		ori_value = lv1_peek32(patch_hv_checks[i].offset);
+
+		sprintf_(patch_state, "Patching LV1: Offset 0x%X - Original: 0x%X - Patch: 0x%X\n", 
+			(int)patch_hv_checks[i].offset, (int)ori_value, (int)patch_hv_checks[i].patch);
+
+		log(patch_state);
+
+		lv1_poke32(patch_hv_checks[i].offset, patch_hv_checks[i].patch);
+	}
+
+	return 0;
+}
 
 int dump_eeprom()
 {
-	CellFsStat stat;
-	uint8_t value;
 	char usb_location[120], location[120];
-	int result, i = 0;
+	int ret;
 	int string, usb_port;
 
 	// HEN
@@ -161,7 +175,7 @@ int dump_eeprom()
 		return 1;
 	}
 
-	if(checkSyscalls(LV1))
+	if(checkSyscalls(LV2))
 	{
 		showMessage("msg_cfw_syscalls_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 		return 1;
@@ -172,8 +186,13 @@ int dump_eeprom()
 	cellFsMkdir(TMP_FOLDER, 0777);
 	sprintf_(location, TMP_FOLDER, NULL);
 
-	if(patch_hv_checks())
+	ret = makeLV1patches();
+
+	if(ret != SUCCEEDED)
+	{
+		log("Error patching LV1\nPlease contact Evilnat to add support for this FW\n");
 		goto error;
+	}
 
 	// Detecting USB
 	usb_port = get_usb_device();
@@ -199,7 +218,7 @@ int dump_eeprom()
 	if(dump_eeprom_data(0x48D00, location) != CELL_FS_SUCCEEDED)
 		goto error;
 
-	restore_patches();
+	restoreLV1patches();
 
 	usb_port = get_usb_device();
 
@@ -215,7 +234,8 @@ int dump_eeprom()
 	return 0;
 
 error: 
-	restore_patches();	
+	if(ret == SUCCEEDED)
+		restoreLV1patches();
 
 	buzzer(TRIPLE_BEEP);
 	showMessage("msg_dump_eeprom_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);

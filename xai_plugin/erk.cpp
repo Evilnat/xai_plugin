@@ -7,10 +7,15 @@
 #include <cell/fs/cell_fs_file_api.h>
 #include <sysutil/sysutil_gamecontent.h>
 #include "payload.h"
+#include "payloads.h"
 #include "mm.h"
 #include "cfw_settings.h"
 #include "log.h"
 #include "erk.h"
+#include "hvcall.h"
+
+uint64_t toc = 0;
+unsigned char payload[payload_size];
 
 static uint8_t eid_root_key[EID_ROOT_KEY_SIZE];
 
@@ -82,6 +87,39 @@ int dump_eid_root_key(uint8_t output[0x30])
 	int result = 1;
 	int payload_installed = 0;
 	int patches_installed = 0;
+
+	if(lv2_peek(CEX_OFFSET) == CEX)
+	{
+		OFFSET_HVSC_REDIRECT = REDIRECT_OFFSET;
+		memcpy(payload, payload_481C_489C, payload_size);
+		toc = TOC_OFFSET;
+		log("CEX FW detected\n");
+	}
+	else if(lv2_peek(CEX_OFFSET - 0x10) == CEX)
+	{
+		OFFSET_HVSC_REDIRECT = REDIRECT_490_OFFSET;
+		memcpy(payload, payload_490C, payload_size);
+		toc = TOC_490_OFFSET;
+		log("CEX FW detected\n");
+	}
+	else if(lv2_peek(DEX_OFFSET) == DEX)
+	{
+		OFFSET_HVSC_REDIRECT = REDIRECT_DEX_OFFSET;
+		memcpy(payload, payload_481D_489D, payload_size);
+		toc = TOC_DEX_OFFSET;
+		log("DEX FW detected\n");
+	}
+	else if(lv2_peek(DEH_OFFSET) == DEH)
+	{
+		OFFSET_HVSC_REDIRECT = REDIRECT_DEH_OFFSET;
+		memcpy(payload, payload_484DEH, payload_size);
+		toc = TOC_DEH_OFFSET;
+		log("DEH FW detected\n");
+	}
+	else
+		return -1;
+
+	lv2_copy_from_user(payload, PAYLOAD_OFFSET, payload_size);
 
 	result = make_patches();
 	if (result != 0) 

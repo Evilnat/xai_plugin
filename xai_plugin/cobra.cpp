@@ -7,7 +7,7 @@
 #include "rebug.h"
 #include "cobra.h"
 
-#define EINVAL (2133571399L)
+//#define EINVAL (2133571399L)
 
 int check_syscall8()
 {
@@ -185,6 +185,30 @@ int toggle_cobra()
 
 		return ret;
 	}
+
+	// Rebug 4.84.2 DECR
+	if(cellFsStat(STAGE2_DEH_ENABLED, &statinfo) == CELL_OK)
+	{
+		ret = cellFsRename(STAGE2_DEH_ENABLED, STAGE2_DEH_DISABLED);
+
+		if(ret != CELL_OK)
+			showMessage("msg_cant_disable_cobra", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+		else
+			showMessage("msg_cobra_disabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);		
+
+		return ret;
+	}
+	else if(cellFsStat(STAGE2_DEH_DISABLED, &statinfo) == CELL_OK)
+	{
+		ret = cellFsRename(STAGE2_DEH_DISABLED, STAGE2_DEH_ENABLED);
+
+		if(ret != CELL_OK)
+			showMessage("msg_cant_enable_cobra", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+		else
+			showMessage("msg_cobra_enabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);		
+
+		return ret;
+	}
 	
 	// Standard CFW
 	if(cellFsStat(STAGE2_BIN_ENABLED, &statinfo) == CELL_OK)
@@ -349,6 +373,35 @@ int toggle_cobra_version()
 				showMessage("msg_cobra_release_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
 			else
 				showMessage("msg_cobra_release_enabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
+
+			return ret;
+		}
+	}
+
+	// Rebug 4.84.2 DECR
+	if(cellFsStat(STAGE2_DEH_ENABLED, &statinfo) == CELL_OK)
+	{
+		if(cellFsStat(STAGE2_DEH_DEBUG, &statinfo) == CELL_OK)
+		{
+			ret = cellFsRename(STAGE2_DEH_ENABLED, STAGE2_DEH_RELEASE);
+			ret |= cellFsRename(STAGE2_DEH_DEBUG, STAGE2_DEH_ENABLED);
+
+			if(ret != CELL_OK)
+				showMessage("msg_cobra_debug_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			else
+				showMessage("msg_cobra_debug_enabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
+
+			return ret;
+		}
+		else if(cellFsStat(STAGE2_DEH_RELEASE, &statinfo) == CELL_OK)
+		{
+			ret = cellFsRename(STAGE2_DEH_ENABLED, STAGE2_DEH_DEBUG);
+			ret |= cellFsRename(STAGE2_DEH_RELEASE, STAGE2_DEH_ENABLED);
+
+			if(ret != CELL_OK)
+				showMessage("msg_cobra_debug_error", (char*)XAI_PLUGIN, (char*)TEX_ERROR);
+			else
+				showMessage("msg_cobra_debug_enabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
 
 			return ret;
 		}

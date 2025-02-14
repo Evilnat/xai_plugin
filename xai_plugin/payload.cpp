@@ -10,11 +10,11 @@
 #include "functions.h"
 #include "common.h"
 #include "cex2dex.h"
+#include "hvcall.h"
 
 static uint64_t real_opd_offset = 0;
-unsigned char payload[payload_size];
 
-static void lv2_copy_from_user(const void* src, uint64_t dst, uint64_t size) 
+void lv2_copy_from_user(const void* src, uint64_t dst, uint64_t size) 
 {
 	if (size == 0)
 		return;
@@ -51,30 +51,8 @@ static void lv2_copy_from_user(const void* src, uint64_t dst, uint64_t size)
 
 int install_payload(void) 
 {
-	uint64_t toc = 0;
-
-	if(lv2_peek(CEX_OFFSET) == CEX)
-	{
-		memcpy(payload, payload_481C_489C, payload_size);
-		toc = TOC_OFFSET;
-	}
-	else if(lv2_peek(CEX_OFFSET - 0x10) == CEX)
-	{
-		memcpy(payload, payload_490C, payload_size);
-		toc = TOC_490_OFFSET;
-	}
-	else if(lv2_peek(DEX_OFFSET) == DEX)
-	{
-		memcpy(payload, payload_481D_489D, payload_size);
-		toc = TOC_DEX_OFFSET;
-	}
-	else
-		return -1;
-
 	if(!toc || payload_size <= 0)
 		return -1;
-
-	lv2_copy_from_user(payload, PAYLOAD_OFFSET, payload_size);
 
 	lv2_poke(PAYLOAD_OPD_OFFSET + 0, PAYLOAD_OFFSET);
 	lv2_poke(PAYLOAD_OPD_OFFSET + 8, toc);

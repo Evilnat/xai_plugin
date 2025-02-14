@@ -6,6 +6,32 @@
 #include "hvcall.h"
 #include "functions.h"
 
+uint64_t OFFSET_HVSC_REDIRECT = 0;
+uint64_t tmp1 = 0;
+uint64_t tmp2 = 0;
+uint64_t tmp3 = 0;
+uint64_t tmp4 = 0;
+
+static void INSTALL_HVSC_REDIRECT(uint64_t offset)
+{
+	tmp1 = lv2_peek(offset);							 		 
+	tmp2 = lv2_peek(offset + 8);								 
+	tmp3 = lv2_peek(offset + 16);								 
+	tmp4 = lv2_peek(offset + 24);								 
+	lv2_poke(offset +  0, 0x7C0802A6F8010010ULL);						 
+	lv2_poke(offset +  8, 0x3960000044000022ULL | ((uint64_t)(1) << 32)); 
+	lv2_poke(offset + 16, 0xE80100107C0803A6ULL);					     
+	lv2_poke(offset + 24, 0x4E80002060000000ULL);
+}
+
+static void REMOVE_HVSC_REDIRECT(uint64_t offset)
+{
+	lv2_poke(offset, tmp1);	    
+	lv2_poke(offset + 8, tmp2);  
+	lv2_poke(offset + 16, tmp3); 
+	lv2_poke(offset + 24, tmp4);
+}
+
 int lv1_insert_htab_entry(uint64_t htab_id, uint64_t hpte_group, uint64_t hpte_v, uint64_t hpte_r, uint64_t bolted_flag, uint64_t flags, uint64_t * hpte_index, uint64_t * hpte_evicted_v, uint64_t * hpte_evicted_r)
 {
 	uint64_t ret = 0, ret_hpte_index = 0, ret_hpte_evicted_v =
@@ -31,8 +57,9 @@ int lv1_insert_htab_entry(uint64_t htab_id, uint64_t hpte_group, uint64_t hpte_v
 int lv1_write_htab_entry(uint64_t vas_id, uint64_t hpte_index, uint64_t hpte_v, uint64_t hpte_r) 
 {
 	int result;
+	uint64_t tmp1, tmp2, tmp3, tmp4;
 
-	INSTALL_HVSC_REDIRECT(1);
+	INSTALL_HVSC_REDIRECT(OFFSET_HVSC_REDIRECT);
 
 	__asm__ __volatile__ (
 		"mr %%r3, %1;"
@@ -46,7 +73,7 @@ int lv1_write_htab_entry(uint64_t vas_id, uint64_t hpte_index, uint64_t hpte_v, 
 		: "r0", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "lr", "ctr", "xer", "cr0", "cr1", "cr5", "cr6", "cr7", "memory"
 	);
 		
-	REMOVE_HVSC_REDIRECT();
+	REMOVE_HVSC_REDIRECT(OFFSET_HVSC_REDIRECT);
 
 	return result;
 }

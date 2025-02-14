@@ -17,7 +17,7 @@
 #include "eeprom.h"
 #include "rebugtoolbox.h"
 
-#define XAI_VERSION "XAI Version 1.16"
+#define XAI_VERSION "XAI Version 1.18"
 
 SYS_MODULE_INFO(xai_plugin, 0, 1, 1);
 SYS_MODULE_START(_xai_plugin_prx_entry);
@@ -182,10 +182,8 @@ static void plugin_thread(uint64_t arg)
 		load_ftp();
 	else if(strcmp(action_thread, "disable_ftp") == 0)
 		unload_ftp();
-	else if(strcmp(action_thread, "enable_trun") == 0)
-		load_trophy_unlocker();
-	else if(strcmp(action_thread, "disable_trun") == 0)
-		unload_trophy_unlocker();
+	else if(strcmp(action_thread, "toggle_trophy_unlocker") == 0)
+		toggle_trophy_unlocker();
 	else if(strcmp(action_thread, "allow_restore_sc") == 0)	
 		allow_restore_sc();	
 	else if(strcmp(action_thread, "skip_existing_rif") == 0)	
@@ -212,10 +210,8 @@ static void plugin_thread(uint64_t arg)
 	}
 	else if(strcmp(action_thread, "toggle_plugins") == 0)
 		toggle_plugins();
-	else if(strcmp(action_thread, "enable_npsignin_lck") == 0)	
-		enable_npsignin_lck();
-	else if(strcmp(action_thread, "disable_npsignin_lck") == 0)	
-		disable_npsignin_lck();		
+	else if(strcmp(action_thread, "toggle_npsignin_lck") == 0)	
+		toggle_npsignin_lck();
 	else if(strcmp(action_thread, "toggle_ofw_mode") == 0)	
 		toggle_ofw_mode();
 	else if(strcmp(action_thread, "toggle_ps2_icon") == 0)	
@@ -413,6 +409,10 @@ static void plugin_thread(uint64_t arg)
 		decryptRedumpISO(0);
 	else if(strcmp(action_thread, "decrypt_redump_isos_usb") == 0)	
 		decryptRedumpISO(1);
+	else if(strcmp(action_thread, "rap2bin") == 0)	
+		rap2bin();
+	else if(strcmp(action_thread, "bin2rap") == 0)	
+		bin2rap();
 	else if(strcmp(action_thread, "cbomb") == 0)	
 		Fix_CBOMB();
 	else if(strcmp(action_thread, "show_clocks") == 0)	
@@ -653,34 +653,71 @@ static void plugin_thread(uint64_t arg)
 		dump_disc_key();
 
 	// Rebug Toolbox
-	else if(strcmp(action_thread, "rbt_pp") == 0)	
+	//
+	// Contains data for different versions of FW
+	// It is possible that support for some more may need to be added
+	//
+ 	else if(strcmp(action_thread, "rbt_pp") == 0)	
 		rtb_pp();
 	else if(strcmp(action_thread, "rbt_lv2") == 0)	
-		rtb_option(LV1_LV2_OFFSET);
+	{
+		if(rbt_custom_lv1_patch(0x3BA000002F830033ULL, 0x2B0000, 0x2C0000, 0x419E0118, 0x60000000, 8) == 2)
+			offsetNotfound();
+	}
 	else if(strcmp(action_thread, "rbt_htab") == 0)	
-		rtb_option(LV1_HTAB_OFFSET);
+	{
+		if(rbt_custom_lv1_patch(0x41DC00543D409979ULL, 0x2D0000, 0x2F0000, 0x41DA0054, 0x60000000, 8) == 2)
+			offsetNotfound();
+	}
 	else if(strcmp(action_thread, "rbt_indi") == 0)	
-		rtb_option(LV1_INDI_OFFSET);
+	{
+		if(rbt_custom_lv1_patch(0x3860000D3800000DULL, 0xAC000, 0x100000, 0x7C630038, 0x38600000, 8) == 2)
+			if(rbt_custom_lv1_patch(0x3860000D3800000DULL, 0x1B0000, 0x1C0000, 0x7C630038, 0x38600000, 8) == 2)
+				offsetNotfound();
+	}
 	else if(strcmp(action_thread, "rbt_um") == 0)	
-		rtb_option(LV1_UM_OFFSET);
+	{
+		if(rbt_custom_lv1_patch(0x7FC3F3784802D40DULL, 0xFA000, 0xFF000, 0xE8180008, 0x38000000, 8) == 2)
+			if(rbt_custom_lv1_patch(0x7FC3F3784802D40DULL, 0x700000, 0x710000, 0xE8180008, 0x38000000, 8) == 2)
+				offsetNotfound();
+	}
 	else if(strcmp(action_thread, "rbt_dm") == 0)	
 		rtb_dm();
 	else if(strcmp(action_thread, "rbt_enc") == 0)	
-		rtb_option(LV1_ENC_OFFSET);
+	{
+		if(rbt_custom_lv1_patch(0x3BFEFF7F2B9F0008ULL, 0x270000, 0x280000, 0x392001CF, 0x392001DF, 0x10) == 2)
+			offsetNotfound();
+	}
 	else if(strcmp(action_thread, "rbt_smgo") == 0)	
 		rtb_smgo();
 	else if(strcmp(action_thread, "rbt_pkg") == 0)	
-		rtb_option(LV1_PKG_OFFSET);
+	{
+		if(rbt_custom_lv1_patch(0xFBC10070480301D1ULL, 0xF0000, 0x120000, 0x419D00A8, 0x60000000, 0x1C) == 2)
+			if(rbt_custom_lv1_patch(0xFBC10070480301D1ULL, 0x700000, 0x800000, 0x419D00A8, 0x60000000, 0x1C) == 2)
+				offsetNotfound();
+	}
 	else if(strcmp(action_thread, "rbt_lpar") == 0)	
 		rtb_lpar();
 	else if(strcmp(action_thread, "rbt_spe") == 0)	
-		rtb_option(LV1_SPE_OFFSET);
+	{
+		if(rbt_custom_lv1_patch(0xF80300307D034378ULL, 0x2F0000, 0x300000, 0x39200009, 0x3920FFFF, 0x10) == 2)
+			offsetNotfound();
+	}
 	else if(strcmp(action_thread, "rbt_dabr") == 0)	
-		rtb_option(LV1_DABR_OFFSET);
+	{
+		if(rbt_custom_lv1_patch(0x7C9F23784BD172ADULL, 0x2EA000, 0x300000, 0x3800000B, 0x3800000F, 0x60) == 2)
+			offsetNotfound();
+	}
 	else if(strcmp(action_thread, "rbt_gart") == 0)	
-		rtb_option(LV1_GART_OFFSET);
+	{
+		if(rbt_custom_lv1_patch(0xF92301A8419E000CULL, 0x210000, 0x230000, 0x3C000001, 0x38001000, 8) == 2)
+			offsetNotfound();
+	}
 	else if(strcmp(action_thread, "rbt_keys") == 0)	
-		rtb_option(LV1_KEYS_OFFSET);
+	{
+		if(rbt_custom_lv1_patch(0x2BA9000338000009ULL, 0x710000, 0x720000, 0x419D004C, 0x60000000, 8) == 2)
+			offsetNotfound();
+	}
 	else if(strcmp(action_thread, "rbt_acl") == 0)	
 		rtb_acl();
 	else if(strcmp(action_thread, "rbt_go") == 0)	

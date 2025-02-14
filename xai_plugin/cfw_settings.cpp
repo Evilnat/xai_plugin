@@ -1,4 +1,9 @@
-﻿#include <stdio.h>
+﻿/* 
+ *	This file contains data for different versions of FW
+ *	It is possible that support for some more may need to be added
+ */
+
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <cell/pad.h>
@@ -18,7 +23,7 @@
 #include "qa.h"
 #include "savegames.h"
 #include "cex2dex.h"
-#include "npsignin_plugin.h"
+#include "eeprom.h"
 
 
 extern "C" int _videorec_export_function_video_rec(void);
@@ -1555,7 +1560,7 @@ void toggle_hidden_trophy_patch()
 	cobra_config->hidden_trophy_mode = !cobra_config->hidden_trophy_mode;
     cobra_write_config(cobra_config);
 
-	system_call_3(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_COLDBOOT, (int)cobra_config->hidden_trophy_mode);
+	system_call_3(SC_COBRA_SYSCALL8, SYSCALL8_OPCODE_PS3MAPI, PS3MAPI_OPCODE_TROPHY, (int)cobra_config->hidden_trophy_mode);
 
 	showMessage(((int)cobra_config->hidden_trophy_mode) ? "msg_hidden_trophy_disabled" : "msg_hidden_trophy_enabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 }
@@ -3299,7 +3304,7 @@ int unload_ftp()
 	return 1;
 }
 
-int load_trophy_unlocker()
+int toggle_trophy_unlocker()
 {
 	int slot = 0, load_slot = 0;
 	char name[120], filename[120];
@@ -3309,13 +3314,7 @@ int load_trophy_unlocker()
 	{
 		showMessage("msg_syscall8_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 		return 1;
-	}
-
-	if(cellFsStat(TROPHYUNLOCKER_SRPX, &stat) != CELL_FS_SUCCEEDED)
-	{
-		showMessage("msg_trun_sprx_not_found", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
-		return 1;
-	}
+	}	
 
 	// Check if it is enabled
 	for(slot = 1; slot < MAX_BOOT_PLUGINS; slot++)
@@ -3330,9 +3329,16 @@ int load_trophy_unlocker()
 
 		if(!strcmp(name, TROPHYUNLOCKER))
 		{
-			showMessage("msg_trun_sprx_already_enabled", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
-			return 1;
+			ps3mapi_unload_vsh_plugin(name);
+			showMessage("msg_trun_sprx_disabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+			return 0;
 		}
+	}
+
+	if(cellFsStat(TROPHYUNLOCKER_SRPX, &stat) != CELL_FS_SUCCEEDED)
+	{
+		showMessage("msg_trun_sprx_not_found", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		return 1;
 	}
 
 	if(!load_slot)
@@ -3345,40 +3351,10 @@ int load_trophy_unlocker()
 	{
 		log("trophyUnlocker.sprx plugin loaded in slot %d\n", load_slot);
 		showMessage("msg_trun_sprx_enabled", (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
-
 		return 0;
 	}
 
 	showMessage("msg_trun_sprx_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
-	return 1;
-}
-
-int unload_trophy_unlocker()
-{
-	int slot = 0;
-	char name[120], filename[120];
-
-	if(!check_cobra_version())
-	{
-		showMessage("msg_syscall8_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
-		return 1;
-	}
-
-	for(slot = 1; slot < 7; slot++)
-	{
-		memset(name, 0, sizeof(name));
-
-		ps3mapi_get_vsh_plugin_info(slot, name, filename);
-
-		if(!strcmp(name, TROPHYUNLOCKER))
-		{
-			ps3mapi_unload_vsh_plugin(name);
-			showMessage("msg_trun_sprx_disabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
-			return 0;
-		}
-	}	
-
-	showMessage("msg_trun_sprx_not_enabled", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
 	return 1;
 }
 
@@ -3683,59 +3659,31 @@ void getPS3Lifetime()
 	PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_INFO2);
 }
 
-
-int enable_npsignin_lck()
+int toggle_npsignin_lck()
 {
-	int fd;
+	int ret, fd;
 	uint64_t write;
-	CellFsStat stat;
-
-	mount_dev_blind();
-
-	uint64_t free_size = check_flash_free_space();
-
-	if(npsignin_lck_size > free_size)
-	{
-		int string = RetrieveString("msg_not_enough_space", (char*)XAI_PLUGIN);	
-		swprintf_(wchar_string, 120, (wchar_t*)string, (int)"/dev_flash");
-		PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_ERROR);
-		umount_dev_blind();
-		return 1;
-	}		
-
-	cellFsOpen(NPSIGNIN_LCK, CELL_FS_O_CREAT | CELL_FS_O_TRUNC | CELL_FS_O_RDWR, &fd, 0, 0);
-	cellFsWrite(fd, npsignin_lck, npsignin_lck_size, &write);
-
-	if(cellFsStat(NPSIGNIN_LCK, &stat) != CELL_FS_SUCCEEDED)
-	{
-		showMessage("msg_signin_lck_enabled_error", (char *)XAI_PLUGIN, (char*)TEX_ERROR);
-		cellFsUnlink(NPSIGNIN_LCK);
-	}
-	else
-		showMessage("msg_signin_lck_enabled", (char *)XAI_PLUGIN, (char*)TEX_SUCCESS);
-
-	cellFsClose(fd);
-	umount_dev_blind();
-	return 0;
-}
-
-int disable_npsignin_lck()
-{
 	CellFsStat stat;
 
 	cellFsUtilMount("CELL_FS_IOS:BUILTIN_FLSH1", "CELL_FS_FAT", DEV_BLIND, 0, 0, 0, 0);
 
 	if(cellFsStat(NPSIGNIN_LCK, &stat) == CELL_FS_SUCCEEDED)
 	{		
-		cellFsUnlink(NPSIGNIN_LCK);
+		cellFsRename(NPSIGNIN_LCK, NPSIGNIN_LCK_DISABLED);
 
-		if(cellFsStat(NPSIGNIN_LCK, &stat) == CELL_FS_SUCCEEDED)
-			showMessage("msg_signin_lck_disabled_error", (char *)XAI_PLUGIN, (char*)TEX_ERROR);
-		else
-			showMessage("msg_signin_lck_disabled", (char *)XAI_PLUGIN, (char*)TEX_SUCCESS);		
+		ret = cellFsStat(NPSIGNIN_LCK, &stat);
+		showMessage(!ret ? "msg_signin_lck_disabled_error" : "msg_signin_lck_disabled", (char *)XAI_PLUGIN, (char*)!ret ? TEX_ERROR : TEX_SUCCESS);		
+	}
+	else if(cellFsStat(NPSIGNIN_LCK_DISABLED, &stat) == CELL_FS_SUCCEEDED)
+	{
+		cellFsRename(NPSIGNIN_LCK_DISABLED, NPSIGNIN_LCK);
+
+		ret = cellFsStat(NPSIGNIN_LCK, &stat);
+		showMessage(!ret ? "msg_signin_lck_enabled" : "msg_signin_lck_enabled_error", (char *)XAI_PLUGIN, (char*)!ret ? TEX_SUCCESS : TEX_ERROR);
 	}
 	else
-		showMessage("msg_signin_lck_is_disabled", (char *)XAI_PLUGIN, (char*)TEX_INFO2);	
+		showMessage("msg_sort_games_error", (char *)XAI_PLUGIN, (char*)TEX_ERROR);		
+		
 
 	cellFsUtilUnMount(DEV_BLIND, 0);
 
@@ -3889,10 +3837,7 @@ void get_token_seed()
 	int usb_port, string;
 	CellFsStat stat;
 	uint8_t value, seed[TOKEN_SIZE], token[TOKEN_SIZE];	
-
-	uint64_t auth_check = 0x16FB64;
-	uint64_t patch1 = 0xFC4D8;
-	uint64_t ori_auth_check = 0, ori_patch1 = 0;
+	uint64_t auth_check_offset, um_read_eeprom_offset;
 
 	// HEN
 	if(!is_hen())
@@ -3918,32 +3863,27 @@ void get_token_seed()
 		goto error;
 	}	
 
-	ori_auth_check = lv1_peek(auth_check);
-	ori_patch1 = lv1_peek(patch1);	
+	// Search offset in LV1
+	auth_check_offset = findValueinLV1(0x150000, 0x180000, 0x4BFFFF8888010070ULL);
 
-	lv1_poke(patch1, 0x2F8000032F800003ULL);
+	um_read_eeprom_offset = findValueinLV1(0xFB000, 0xFF000, 0x3D29FFFB380973CFULL);
+	if(!um_read_eeprom_offset)
+		um_read_eeprom_offset = findValueinLV1(0x700000, 0x710000, 0x3D29FFFB380973CFULL);
 
-	if(lv1_peek(auth_check) != 0x2F800000409E0050ULL)
-	{ 
-		auth_check = 0;
-
-		for(uint64_t addr = 0xA000; addr < 0x800000ULL; addr += 4)
-		{
-			if(lv1_peek(addr) == 0x4BFFFF8888010070ULL)
-			{ 
-				auth_check = addr + 8;
-				ori_auth_check = lv1_peek(auth_check);
-				break;
-			}
-		}
-
-		if(!auth_check)
-			goto error;		
+	if(!auth_check_offset || !um_read_eeprom_offset)
+	{
+		log("Error patching LV1\nPlease contact Evilnat to add support for this FW\n");
+		goto error;
 	}
 
-	// Disable auth check
-	if(auth_check && lv1_peek(auth_check) == 0x2F800000409E0050ULL)
-		lv1_poke(auth_check, 0x2F80000048000050ULL);
+	auth_check_offset += 0x0C;
+	um_read_eeprom_offset += 0x4C;
+
+	lv1_poke32(auth_check_offset, 0x48000050ULL);
+	lv1_poke32(um_read_eeprom_offset, 0x48000050ULL);
+
+	log("auth_check_offset: 0x%X\n", (int)auth_check_offset);
+	log("um_read_eeprom_offset: 0x%X\n", (int)um_read_eeprom_offset);
 
 	if(lv2_ss_update_mgr_if(UPDATE_MGR_PACKET_ID_READ_EEPROM, QA_FLAG_OFFSET, (uint64_t)&value, 0, 0, 0, 0)) 
 	{
@@ -3979,8 +3919,8 @@ void get_token_seed()
 
 	fclose_(fp);
 
-	lv1_poke(auth_check, ori_auth_check);
-	lv1_poke(patch1, ori_patch1);
+	lv1_poke32(auth_check_offset, 0x409E0050ULL);
+	lv1_poke32(um_read_eeprom_offset, 0x419D0054ULL);
 
 	// Detecting USB	
 	usb_port = get_usb_device();
@@ -4007,19 +3947,23 @@ void get_token_seed()
 
 error:
 	showMessage("msg_get_token_seed_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
-	lv1_poke(auth_check, ori_auth_check);
-	lv1_poke(patch1, ori_patch1);
+
+	if(auth_check_offset && um_read_eeprom_offset)
+	{
+		lv1_poke32(auth_check_offset, 0x409E0050ULL);
+		lv1_poke32(um_read_eeprom_offset, 0x419D0054ULL);
+	}
 	
 	fclose_(fp);
+
+	return;
 }
 
 void check_ros_bank()
 {
 	int string;
 	uint8_t value = 0;	
-	uint64_t auth_check = 0x16FB64;
-	uint64_t patch1 = 0xFC4D8;
-	uint64_t ori_auth_check, ori_patch1;
+	uint64_t auth_check_offset, um_read_eeprom_offset;
 
 	if(checkSyscalls(LV1))
 	{
@@ -4033,32 +3977,27 @@ void check_ros_bank()
 		return;
 	}	
 
-	ori_auth_check = lv1_peek(auth_check);
-	ori_patch1 = lv1_peek(patch1);	
+	// Search offset in LV1
+	auth_check_offset = findValueinLV1(0x150000, 0x180000, 0x4BFFFF8888010070ULL);
 
-	lv1_poke(patch1, 0x2F8000032F800003ULL);
+	um_read_eeprom_offset = findValueinLV1(0xFB000, 0xFF000, 0x3D29FFFB380973CFULL);
+	if(!um_read_eeprom_offset)
+		um_read_eeprom_offset = findValueinLV1(0x700000, 0x710000, 0x3D29FFFB380973CFULL);
 
-	if(lv1_peek(auth_check) != 0x2F800000409E0050ULL)
-	{ 
-		auth_check = 0;
-
-		for(uint64_t addr = 0xA000; addr < 0x800000ULL; addr += 4)
-		{
-			if(lv1_peek(addr) == 0x4BFFFF8888010070ULL)
-			{ 
-				auth_check = addr + 8;
-				ori_auth_check = lv1_peek(auth_check);
-				break;
-			}
-		}
-
-		if(!auth_check)
-			goto error;		
+	if(!auth_check_offset || !um_read_eeprom_offset)
+	{
+		log("Error patching LV1\nPlease contact Evilnat to add support for this FW\n");
+		goto error;
 	}
 
-	// Disable auth check
-	if(auth_check && lv1_peek(auth_check) == 0x2F800000409E0050ULL)
-		lv1_poke(auth_check, 0x2F80000048000050ULL);
+	auth_check_offset += 0x0C;
+	um_read_eeprom_offset += 0x4C;
+
+	lv1_poke32(auth_check_offset, 0x48000050ULL);
+	lv1_poke32(um_read_eeprom_offset, 0x48000050ULL);
+
+	log("auth_check_offset: 0x%X\n", (int)auth_check_offset);
+	log("um_read_eeprom_offset: 0x%X\n", (int)um_read_eeprom_offset);
 
 	if(lv2_ss_update_mgr_if(UPDATE_MGR_PACKET_ID_READ_EEPROM, ACTIVE_ROS_BANK_OFFSET, (uint64_t)&value, 0, 0, 0, 0) != 0)
 	{
@@ -4071,8 +4010,11 @@ void check_ros_bank()
 	PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
 
 error:
-	lv1_poke(auth_check, ori_auth_check);
-	lv1_poke(patch1, ori_patch1);
+	if(auth_check_offset && um_read_eeprom_offset)
+	{
+		lv1_poke32(auth_check_offset, 0x409E0050ULL);
+		lv1_poke32(um_read_eeprom_offset, 0x419D0054ULL);
+	}
 
 	return;
 }
@@ -4190,7 +4132,7 @@ int spoof_mac()
 	uint8_t new_mac_buffer[0x12];
 
 	uint64_t start_offset = 0x8000000000070000ULL;
-	uint64_t end_offset = 0x8000000000100000ULL;	
+	uint64_t end_offset = 0x8000000000400000ULL;	
 	uint64_t current_mac, new_mac, read;
 	uint64_t offset;
 
@@ -4582,6 +4524,7 @@ void Fix_CBOMB()
 		diff = sec - clock;
 		xSettingDateGetInterface()->SaveDiffTime(diff);
 	}
+
 	if(!a1)
 		sys_ss_secure_rtc(timedata);
 
@@ -4986,4 +4929,227 @@ void show_bd_info()
 		(int)pscode[7], (int)conv_str3);	
 
 	PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_INFO2);	
+}
+
+int rap2bin()
+{
+	char content_id[0x24];
+	char str_buffer[120], exdata[120], rap_bin_file[120];
+
+	int string;
+	int bin_file_exist, found, count = 0;
+	int MAGIC_NUMBER = 0xFAF0FAF0;
+	int file, fd, file2, usb_port, fileSize, rap_files;
+
+	uint8_t rap_value[0x10], buffer[0x50], check_value[0x50];
+	uint64_t read_dir, write, read, seek;
+	CellFsDirent dir;		
+	CellFsStat stat;
+	
+	usb_port = get_usb_device();
+
+	if(usb_port != -1)
+		sprintf_(exdata, "/dev_usb%03d/exdata", usb_port, NULL);
+	else
+		sprintf_(exdata, "/dev_hdd0/exdata", NULL, NULL);
+
+	cellFsMkdir(exdata, 0777);
+	cellFsChmod(exdata, 0666);
+
+	sprintf_(rap_bin_file, "%s/rap.bin", (int)exdata);
+
+	bin_file_exist = cellFsStat(rap_bin_file, &stat);
+
+	if(cellFsOpen(rap_bin_file, CELL_FS_O_WRONLY | CELL_FS_O_CREAT | CELL_FS_O_TRUNC, &file, 0, 0) != CELL_FS_SUCCEEDED)
+	{
+		log("RAP2BIN: Unable to create %s\n", rap_bin_file);
+		goto error;
+	}
+
+	showMessage("msg_rap2bin_imp_wait", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
+
+	cellFsChmod(rap_bin_file, 0666);
+
+	if(!cellFsOpendir(exdata, &fd))
+	{
+		while(!cellFsReaddir(fd, &dir, &read_dir))
+		{
+			if(read_dir == 0)
+				break;	
+
+			found = 0;
+
+			if(strstr(dir.d_name, ".rap") != NULL) 
+			{			
+				memset(buffer, 0, 0x50);
+				strncpy(content_id, dir.d_name, strlen(dir.d_name) - 4);				
+				sprintf_(str_buffer, "%s/%s", (int)exdata, (int)dir.d_name);
+
+				if(readfile(str_buffer, rap_value, 0x10) != SUCCEEDED)
+				{
+					log("RAP2BIN: Error reading %s\n", str_buffer);
+					goto error;
+				}
+
+				memcpy(buffer, &MAGIC_NUMBER, 4);
+				memcpy(buffer + 0x10, content_id, 0x24);
+				memcpy(buffer + 0x40, rap_value, 0x10);
+
+				if(cellFsWrite(file, buffer, 0x50, &write) != CELL_FS_SUCCEEDED)
+				{
+					log("RAP2BIN: Unable to save %s\n", rap_bin_file);
+					goto error;
+				}
+
+				count += 1;
+				//log("RAP2BIN: %s imported successfully\n", str_buffer);
+			}			
+		}
+
+		if(!count)
+		{
+			log("RAP2BIN: Failed to add any new RAP file\n");
+			goto error;
+		}
+	}
+	else
+	{
+		log("RAP2BIN: Unable to find RAP files\n");
+		goto error;
+	}
+
+	cellFsClose(file);
+	cellFsClose(file2);
+	cellFsClosedir(fd); 
+
+	// Copying to /dev_hdd0/exdata/rap.bin
+	if(usb_port != -1)
+	{
+		if(cellFsStat(rap_bin_file, &stat) == CELL_FS_SUCCEEDED)
+		{
+			uint8_t *buffer = (uint8_t *)malloc_(stat.st_size);
+			readfile(rap_bin_file, buffer, stat.st_size);
+			cellFsMkdir(RAP_BIN_HDD_PATH, 0777);
+			saveFile(RAP_BIN_HDD_PATH, buffer, stat.st_size);
+			free_(buffer);
+		}
+	}
+
+	buzzer(SINGLE_BEEP);
+	log("RAP2BIN: %d RAP files imported successfully\n", count);
+	string = RetrieveString("msg_rap2bin_imported", (char*)XAI_PLUGIN);	
+	swprintf_(wchar_string, 120, (wchar_t*)string, (int)count);
+	PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
+
+	return 0;
+
+error:
+	buzzer(TRIPLE_BEEP);
+	cellFsClose(file);
+	cellFsClose(file2);
+	cellFsClosedir(fd);
+
+	showMessage("msg_rap2bin_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+
+	return 1;
+}
+
+int bin2rap()
+{
+	char content_id[0x24], rap_file[120], exdata[120];
+	int string;
+	int rap_bin_fd, fileSize, rap_files, usb_port;
+	int MAGIC_NUMBER = 0xFAF0FAF0;
+	int exported_files = 0;
+	uint8_t buffer[0x50], rap_value[0x10];
+	uint64_t seek, read, write;
+	CellFsStat stat;		
+
+	usb_port = get_usb_device();
+
+	if(usb_port != -1)
+		sprintf_(rap_file, "/dev_usb%03d/exdata/rap.bin", usb_port, NULL);
+
+	if(cellFsStat(rap_file, &stat) != CELL_FS_SUCCEEDED)
+		sprintf_(rap_file, RAP_BIN_HDD_PATH, NULL);
+
+	cellFsStat(rap_file, &stat);
+
+	if(cellFsOpen(rap_file,  CELL_FS_O_RDONLY, &rap_bin_fd, 0, 0) != CELL_FS_SUCCEEDED)
+	{
+		log("BIN2RAP: Unable to open rap.bin\n");
+		goto error;
+	}	
+
+	fileSize = stat.st_size;
+		
+	if(!fileSize)
+	{
+		log("BIN2RAP: No RAP files detected in rap.bin\n");
+		goto error;
+	}
+
+	rap_files = (fileSize / 0x50);
+	log("BIN2RAP: RAP files detected in rap.bin: %d\n", rap_files);		
+
+	usb_port = get_usb_device();
+
+	if(usb_port != -1)
+		sprintf_(exdata, "/dev_usb%03d/exdata", usb_port, NULL);
+	else
+		sprintf_(exdata, "/dev_hdd0/exdata", NULL, NULL);
+
+	cellFsMkdir(exdata, 0777);
+
+	showMessage("msg_rap2bin_exp_wait", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
+		
+	for(int count = 0; count < rap_files; count++)
+	{
+		memset(buffer, 0, 0x50);
+		cellFsLseek(rap_bin_fd, 0x50 * count, SEEK_SET, &seek);
+
+		if(cellFsRead(rap_bin_fd, buffer, 0x50, &read) != CELL_FS_SUCCEEDED)
+		{
+			log("BIN2RAP: Error reading rap.bin file\n");
+			goto error;
+		}
+
+		if(memcmp(buffer, &MAGIC_NUMBER, 4) != CELL_FS_SUCCEEDED)
+		{
+			log("BIN2RAP: Bad magic!\n");
+			goto error;
+		}
+
+		memcpy(content_id, buffer + 0x10, 0x24);
+		memcpy(rap_value, buffer + 0x40, 0x10);
+		
+		sprintf_(rap_file, "%s/%s.rap", (int)exdata, (int)content_id);
+
+		if(saveFile(rap_file, rap_value, 0x10) != SUCCEEDED)
+		{
+			log("BIN2RAP: Unable to save %s!\n", rap_file);
+			goto error;
+		}
+
+		exported_files += 1;
+	}			
+
+	buzzer(SINGLE_BEEP);
+	cellFsClose(rap_bin_fd);
+
+	log("BIN2RAP: %d files exported successfully\n", exported_files);
+
+	string = RetrieveString("msg_rap2bin_exported", (char*)XAI_PLUGIN);	
+	swprintf_(wchar_string, 120, (wchar_t*)string, (int)exported_files);
+	PrintString(wchar_string, (char*)XAI_PLUGIN, (char*)TEX_SUCCESS);
+
+	return 0;
+
+error:
+	buzzer(TRIPLE_BEEP);
+	cellFsClose(rap_bin_fd);
+
+	showMessage("msg_rap2bin_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+
+	return 1;
 }

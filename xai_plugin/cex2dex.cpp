@@ -1564,7 +1564,7 @@ int enable_dex_support()
 	
 	if(AesCbcCfbEncrypt(encrypted_donor_buf, donor_buf, 0xC0, eid_section_key, 0x80, eid_iv) != SUCCEEDED)
 	{
-		log("Unable encrypt patched EID0 section\n");
+		log("Unable to encrypt patched EID0 section\n");
 		goto error;
 	}
 

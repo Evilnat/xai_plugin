@@ -28,6 +28,7 @@
 #define STAGE2_EVILNAT_DEX_DEBUG  		"/dev_blind/sys/stage2.dex.debug"
 
 #define NPSIGNIN_LCK					"/dev_blind/vsh/resource/npsignin_plugin.lck"
+#define NPSIGNIN_LCK_DISABLED			"/dev_blind/vsh/resource/npsignin_plugin.lck.bak"
 
 #define RCO_DATE						"/dev_blind/vsh/resource/explore_plugin_full.rco.date"
 #define RCO_ORI							"/dev_blind/vsh/resource/explore_plugin_full.rco.ori"
@@ -46,7 +47,7 @@
 #define NAND_DUMP						"FLASH-NAND-FW%X.%X%X.bin"
 
 #define XREGISTRY_FILE					"/dev_flash2/etc/xRegistry.sys"
-#define XREGISTRY_BACKUP_FILE			"/dev_flash2/etc//backup/xRegistry.sys"
+#define XREGISTRY_BACKUP_FILE			"/dev_flash2/etc/backup/xRegistry.sys"
 #define ACT_DAT_PATH					"/dev_hdd0/home/%08d/exdata/act.dat"
 
 #define TEX_ERROR						"tex_error_ws"
@@ -67,6 +68,7 @@
 #define LIBAUDIO_SPRX					"/dev_blind/sys/external/libaudio.sprx"
 #define LIBAUDIO_ORIGINAL				"/dev_blind/sys/external/libaudio.sprx.ori"
 #define LIBAUDIO_PATCHED				"/dev_blind/sys/external/libaudio.sprx.patched"
+#define RAP_BIN_HDD_PATH				"/dev_hdd0/exdata/rap.bin"
 
 #define LV2							0
 #define LV1							1
@@ -74,14 +76,6 @@
 
 #define SYSCALL_TABLE				0x8000000000363BE0ULL
 #define DISABLED					0xFFFFFFFF80010003ULL
-
-#define GPU_CLOCK_PATTERN1			0x0000000100000002ULL
-#define GPU_CLOCK_PATTERN2			0x0000000100004028ULL
-#define GPU_CLOCK_PATTERN3			0x0000402CULL
-
-#define GPU_DDR3_CLOCK_PATTERN1		0x0000000500000003ULL
-#define GPU_DDR3_CLOCK_PATTERN2		0x0000000600004010ULL
-#define GPU_DDR3_CLOCK_PATTERN3		0x00004014ULL
 
 #define PRODUCT_MODE_FLAG_OFFSET	0x48C07
 #define RECOVERY_MODE_FLAG_OFFSET	0x48C61
@@ -97,6 +91,9 @@
 
 #define REDUMP_WATERMARK_OFFSET		0xF70	
 #define REDUMP_KEY_OFFSET			0xF80	
+
+#define RAP2BIN_HDD					0
+#define RAP2BIN_USB					1
 
 typedef struct
 {
@@ -361,8 +358,7 @@ void close_xml_list();
 
 int load_ftp();
 int unload_ftp();
-int load_trophy_unlocker();
-int unload_trophy_unlocker();
+int toggle_trophy_unlocker();
 
 void spoof_idps();
 void spoof_psid();
@@ -373,8 +369,7 @@ void unlock_hdd_space();
 void show_ip();
 void getPS3Lifetime();
 
-int enable_npsignin_lck();
-int disable_npsignin_lck();
+int toggle_npsignin_lck();
 void sm_error_log();
 void get_token_seed();
 void check_ros_bank();
@@ -395,5 +390,8 @@ void decryptRedumpISO(int src);
 int swap_libaudio();
 
 void show_bd_info();
+
+int rap2bin();
+int bin2rap();
 
 #endif /* _CFW_SETTINGS_H */

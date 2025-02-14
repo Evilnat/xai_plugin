@@ -10,6 +10,11 @@
 #define STAGE2_DEX_RELEASE				"/dev_blind/rebug/cobra/stage2.dex.release"
 #define STAGE2_DEX_DEBUG  				"/dev_blind/rebug/cobra/stage2.dex.debug"
 
+#define STAGE2_DEH_ENABLED				"/dev_blind/rebug/cobra/stage2.deh"
+#define STAGE2_DEH_DISABLED				"/dev_blind/rebug/cobra/stage2.deh.bak"
+#define STAGE2_DEH_RELEASE				"/dev_blind/rebug/cobra/stage2.deh.release"
+#define STAGE2_DEH_DEBUG  				"/dev_blind/rebug/cobra/stage2.deh.debug"
+
 #define STAGE2_EVILNAT_CEX_ENABLED		"/dev_blind/sys/stage2.cex"
 #define STAGE2_EVILNAT_CEX_DISABLED		"/dev_blind/sys/stage2.cex.bak"
 #define STAGE2_EVILNAT_CEX_RELEASE		"/dev_blind/sys/stage2.cex.release"

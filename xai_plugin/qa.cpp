@@ -1,16 +1,33 @@
 /*
-	From Habib Toolbox with some changes added
-*/
+ *	From Habib Toolbox with some changes added
+ *
+ *	This file contains data for different versions of FW
+ *	It is possible that support for some more may need to be added
+ */
 
 #include <stdio.h>
 #include <string.h>
 #include <cell/fs/cell_fs_file_api.h>
+#include "log.h"
 #include "qa.h"
 #include "cfw_settings.h"
 #include "gccpch.h"
 #include "hvcall.h"
 #include "mm.h"
 #include "cex2dex.h"
+#include "eeprom.h"
+
+static uint64_t um_ndpmo_eeprom_offset;
+static uint64_t dm_patch1_offset, dm_patch2_offset, dm_patch3_offset, dm_patch4_offset;
+
+static patches_eeprom patch_hv_checks[5] =
+{	
+	{ 0, 0x38000000ULL, 0xE8180008ULL },
+	{ 0, 0x60000000ULL, 0xF8010098ULL },
+	{ 0, 0x38600001ULL, 0x4BFFF0E5ULL },
+	{ 0, 0x3BE00001ULL, 0x38A10070ULL },
+	{ 0, 0x38600000ULL, 0x48006065ULL },
+};
 
 static uint8_t erk[0x20] = 
 {
@@ -43,22 +60,48 @@ static void lv1_poked(uint64_t addr, uint64_t value)
 	system_call_2(7, HV_BASE + addr, value);
 }
 
-static void lv1_patches()
+static int lv1_patches()
 {
-	lv1_poke32(UM_PATCH_OFFSET, 0x38000000); 
-    lv1_poke32(DM_PATCH1_OFFSET, 0x60000000); 
-    lv1_poke32(DM_PATCH2_OFFSET, 0x38600001); 
-    lv1_poke32(DM_PATCH3_OFFSET, 0x3BE00001); 
-    lv1_poke32(DM_PATCH4_OFFSET, 0x38600000); 
+	char patch_state[120];
+	uint64_t ori_value;
+
+	// Search offset in LV1
+	um_ndpmo_eeprom_offset = findValueinLV1(0xFA000, 0xFF000, 0x7FC3F3784802D40DULL);
+	if(!um_ndpmo_eeprom_offset)
+		um_ndpmo_eeprom_offset = findValueinLV1(0x700000, 0x710000, 0x7FC3F3784802D40DULL);
+
+	dm_patch1_offset = findValueinLV1(0x160000, 0x190000, 0x3BA1009048004EC5ULL);
+	if(!dm_patch1_offset)
+		dm_patch1_offset = findValueinLV1(0x160000, 0x190000, 0x3BA1009048004EC5ULL);
+
+	patch_hv_checks[0].offset = um_ndpmo_eeprom_offset + 8;
+	patch_hv_checks[1].offset = dm_patch1_offset + 0x14;
+	patch_hv_checks[2].offset = dm_patch1_offset + 0x38;
+	patch_hv_checks[3].offset = dm_patch1_offset + 0xB0;
+	patch_hv_checks[4].offset = dm_patch1_offset + 0xB8;
+
+	if(!um_ndpmo_eeprom_offset || !dm_patch1_offset)
+		return 1;
+
+	for(int i = 0; i <= 4; i++)
+	{
+		ori_value = lv1_peek32(patch_hv_checks[i].offset);
+
+		sprintf_(patch_state, "Patching LV1: Offset 0x%X - Original: 0x%X - Patch: 0x%X\n", 
+			(int)patch_hv_checks[i].offset, (int)ori_value, (int)patch_hv_checks[i].patch);
+
+		log(patch_state);
+
+		lv1_poke32(patch_hv_checks[i].offset, patch_hv_checks[i].patch);
+	}
+
+	return 0;
 }
 
 static void restore_patches()
 {
-	lv1_poke32(UM_PATCH_OFFSET, UM_PATCH_ORI); 
-    lv1_poke32(DM_PATCH1_OFFSET, DM_PATCH1_ORI); 
-    lv1_poke32(DM_PATCH2_OFFSET, DM_PATCH2_ORI); 
-    lv1_poke32(DM_PATCH3_OFFSET, DM_PATCH3_ORI);
-    lv1_poke32(DM_PATCH4_OFFSET, DM_PATCH4_ORI); 
+	for(int i = 0; i <= 4; i++)
+		lv1_poke32(patch_hv_checks[i].offset, patch_hv_checks[i].ori);
 }
 
 void read_qa_flag()
@@ -76,7 +119,10 @@ int set_qa_flag(uint8_t value)
 	uint8_t token[TOKEN_SIZE];	
 
 	if(receive_eid_idps((value == FULL ? EID0 : EID5), idps))
+	{
+		log("Unable to get IDPS from EID\n");
 		return 5;
+	}
 
 	memset(seed, 0, TOKEN_SIZE);
 	memcpy(seed + 4, idps, IDPS_SIZE);
@@ -127,7 +173,11 @@ int set_qa_flag(uint8_t value)
 	sha1_hmac(seed + 60, seed, (uint32_t)60, hmac, (uint32_t)0x40);
 	AesCbcCfbEncrypt(token, seed, 0x50, erk, 0x100, iv_qa);
 
-	lv1_patches();
+	if(lv1_patches() != SUCCEEDED)
+	{
+		log("Unable to get data from LV1\nPlease contact Evilnat to add support for this FW\n");
+		return 5;
+	}
 
 	struct ps3dm_scm_write_eeprom write_eeprom;
 	int len;

@@ -3,7 +3,7 @@ XAI Plugin - Original Source by mysis [https://www.psx-place.com/threads/custom-
 
 Remember that videorec.sprx and xai_plugin.sprx must be signed after compiled
 
-This version of xai_plugin was modified to be used on **CFW 4.89.3 Evilnat**
+This version of xai_plugin was modified to be used on **CFW 4.91.3 Evilnat**
 
 Repositories used:
 [sguerrini97's setup_flash_for_otheros](https://github.com/sguerrini97/psl1ghtv2_ports/tree/master/setup_flash_for_otheros)
@@ -57,6 +57,8 @@ File Manager
 Basic Tools
 • Decrypt 3k3y/Redump ISOs (HDD): Decrypts 3k33y/redump ISOs from dev_hdd0/PS3ISO with 'd1/disc' key file if it is available
 • Decrypt 3k3y/Redump ISOs (USB): Decrypts 3k33y/redump ISOs from dev_usb/PS3ISO with 'd1/disc' key file if it is available
+• Import Licenses to rap.bin: Imports rap licenses from /dev_hdd0/exdata or /dev_usb/exdata to rap.bin file
+• Export Licenses from rap.bin: Exports rap licenses from rap.bin file to /dev_hdd0/exdata or /dev_usb/exdata
 • Fix CBOMB: Patches RTC with static value (default) or current updated PS3 system date. Useful for PS3 with dead CMOS battery
 • Show Total PS3 Usage: Shows the total days that the PS3 has been on, number of times it has been turned on and off
 • FAN Speed: Shows current FAN speed
@@ -71,8 +73,26 @@ Basic Tools
 • Show XAI Version: Shows the current version of xai_plugin
 
 Basic Tools > xRegistry Tools
+• Show Region Info: Shows current DVD TV mode and BDVD/DVD/PS3 region
+• DVD TV System: Switch between PAL and NTSC for DVD Movies
 • Backup xRegistry.sys: Creates a backup of xRegistry.sys to /dev_usb or /dev_hdd0
 • Button Assignment: Switches O and X buttons
+
+Basic Tools > xRegistry Tools > Region Tools
+• Default/Disabled: Sets BDVD/DVD/PS3 region to Default in xRegistry (0x00)
+• Japan: Sets BDVD/DVD/PS3 region to Japan in xRegistry (0x83)
+• USA: Sets BDVD/DVD/PS3 region to USA in xRegistry (0x84)
+• Europe: Sets BDVD/DVD/PS3 region to Europe in xRegistry (0x85)
+• Korea: Sets BDVD/DVD/PS3 region to Korea in xRegistry (0x86)
+• United Kingdom: Sets BDVD/DVD/PS3 region to United Kingdom in xRegistry (0x87)
+• Mexico: Sets BDVD/DVD/PS3 region to Mexico in xRegistry (0x88)
+• Australia: Sets BDVD/DVD/PS3 region to Australia in xRegistry (0x89)
+• Asia: Sets BDVD/DVD/PS3 region to Asia in xRegistry (0x8A)
+• Taiwan: Sets BDVD/DVD/PS3 region to Taiwan in xRegistry (0x8B)
+• Russia: Sets BDVD/DVD/PS3 region to Russia in xRegistry (0x8C)
+• China: Sets BDVD/DVD/PS3 region to China in xRegistry (0x8D)
+• Hong Kong: Sets BDVD/DVD/PS3 region to Hong Kong in xRegistry (0x8E)
+• Brazil: Sets BDVD/DVD/PS3 region to Brazil in xRegistry (0x8F)
 
 Basic Tools > Led Tools
 • Off: Turns off the PS3's power LED
@@ -135,20 +155,16 @@ Cobra Tools > FAN Tools > PS2 FAN
 • PS2 Fan Mode: 90%: Sets FAN speed to 0xE8 on PS2 game
 
 QA Tools
-• Check QA Flags: Check if QA flags are enabled or disabled
-• Enable QA Flags: Enables QA Flags
-• Disable QA Flags: Disables QA Flags
+• Enable QA Flags (Normal): Enables QA Flags through "Network Settings"
+• Enable QA Flags (Advanced): Enables advanced QA Flags through "Network Settings"
+• Disable QA Flags: Disables QA Flags through "Network Settings"
 
 Cobra Tools
 • Cobra Information: Shows current Cobra information
 • Check Syscall 8: Checks Cobra's Syscall 8 status
 • Create Syscalls: Create syscalls 6, 7, 8, 9, 10, 11, 15 and 35
-• Enable PSN Protection: Blocks PSN login when syscalls are enabled
-• Disable PSN Protection: Enables PSN login when syscalls are enabled
-• Enable FTP: Enables FTP connection in port 21
-• Disable FTP: Disables FTP connection
-• Enable TrophyUnlocker: Enables TrophyUnlocker INGAME plugin
-• Disable TrophyUnlocker: Disables TrophyUnlocker INGAME plugin
+• Toggle PSN Protection: Enables/blocks PSN login when syscalls are enabled
+• Toggle TrophyUnlocker: Enables/disables TrophyUnlocker INGAME plugin
 • Allow Restore Syscalls: Allows restoring syscalls through "System Update"
 • Skip license creation: Skips overwriting license file (RIF) if it already exists
 • Create license: Creates RIF licenses from RAP files from "x:\exdata"
@@ -197,6 +213,24 @@ Dump Tools
 • Log Secure File ID usage: Writes save data name and file ID key to log file
 • Dump Disc Hash Key: Retrieves disc hash key from an ORIGINAL game disc
 
+Rebug Tools
+• LV1 Peek/Poke Support: Patch unused LV1 syscalls 182 and 183
+• LV2 Memory Protection: Patch Shutdown on LV2 modification
+• HTAB Mapping With Write Protection: Enable or Disable protected HTAB mapping
+• Access to all INDI Info Manager Services: Enable or Disable INDI access
+• Update Manager EEPROM Write Access: Patch Update Manager access to EEPROM
+• Dispatch Manager Access: Patch Dispatch Manager access to all services
+• Allow ENCDEC IOCTL Command 0x85: Enable IOCTL Command 0x85
+• System Manager Ability Mask of GameOS: Allow access to all system manager services
+• Extract all PKG Types: Allow Update Manager to extract all PKG types
+• Full Access for Repo Nodes in Any LPAR: Allow create, modify, delete for repository nodes
+• LV1 Full Access to MFC_SR1 SPE Register: Allow all-bit access to the register
+• LV1 Access to set Data Break Points: Enable LV1 access with lv1_set_dabr()
+• LV1 Access to GPU GART Memory: Allow LV1 to use 4KB IO page size
+• Storage Manager ENCDEC Keys Access: Allow Storage Manager to clear ENCDEC keys
+• Skip all ACL Checks: Enable skipping of ACL checks for all storage devices
+• Initial GuestOS Loader: Enable GuestOS mode 1 for GameOS
+
 OtherOS Tools
 • Resize VFLASH/NAND Regions: Resizes VFLASH/NAND Regions 5 to allow OtherOS
 • Install Petitboot: Installs Petitboot to VFLASH/NAND Regions 5 from USB device
@@ -228,5 +262,7 @@ Service Tools > Advanced Service Tools
 • Check 8th SPE: Checks if 8th SPE is currently enabled or disabled
 • Toggle 8th SPE: Enables/disables 8th SPE
 • Enable VSH Debugging: Enables debugging vsh.self
+• Enable Support for DEX OFW: Enables OFW DEX installation on converted PS3 Retail
+• Disable Support for DEX OFW: Disables OFW DEX installation on converted PS3 Retail
 • Load LV2 kernel: Loads lv2_kernel.self file from /dev_usb000 or /dev_flash
 ```

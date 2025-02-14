@@ -1,31 +1,15 @@
 #ifndef _REBUGTOOLBOX_H
 #define _REBUGTOOLBOX_H
 
+/*
+ *	This file contains data for different versions of FW
+ *	It is possible that support for some more may need to be added
+ */
+
 #include <stdio.h>
 #include "functions.h"
 #include "cfw_settings.h"
 #include "log.h"
-
-#define LV1_PP_OFFSET		0x8000000000309E4CULL
-#define LV1_LV2_OFFSET		0x80000000002B4434ULL
-#define	LV1_HTAB_OFFSET		0x80000000002DD70CULL
-#define LV1_INDI_OFFSET		0x80000000000AC594ULL
-#define LV1_UM_OFFSET		0x80000000000FEBD4ULL
-#define LV1_DM_OFFSET1		0x800000000016FA64ULL
-#define LV1_DM_OFFSET2		0x800000000016FA88ULL
-#define LV1_DM_OFFSET3		0x800000000016FB00ULL
-#define LV1_DM_OFFSET4		0x800000000016FB08ULL
-#define LV1_ENC_OFFSET		0x8000000000274FECULL
-#define LV1_PKG_OFFSET		0x80000000000FBE24ULL
-#define LV1_LPAR_OFFSET1	0x80000000002E4E28ULL
-#define LV1_LPAR_OFFSET2	0x80000000002E50ACULL
-#define LV1_LPAR_OFFSET3	0x80000000002E5550ULL
-#define LV1_SPE_OFFSET		0x80000000002F9EB8ULL
-#define LV1_DABR_OFFSET		0x80000000002EB550ULL
-#define LV1_GART_OFFSET		0x8000000000214F1CULL
-#define LV1_KEYS_OFFSET		0x8000000000714D50ULL
-#define LV1_ACL_OFFSET1		0x800000000025C504ULL
-#define LV1_ACL_OFFSET2 	0x800000000025C50CULL
 
 typedef struct
 {
@@ -43,95 +27,93 @@ typedef struct
 
 static patches_64_st lv1_lpar_data[11] =
 {
-	// Part 1
-	{ LV1_LPAR_OFFSET1 + 0,  0xE81E0020E95E0028ULL, 0xE81E0018E95E0020ULL },
-	{ LV1_LPAR_OFFSET1 + 8,  0xE91E0030E8FE0038ULL, 0xE91E0028E8FE0030ULL },
-	{ LV1_LPAR_OFFSET1 + 12, 0xE8FE0038EBFE0018ULL, 0xE8FE0030EBEB0050ULL },
+	{ 0, 0xE81E0020E95E0028ULL, 0xE81E0018E95E0020ULL },
+	{ 0, 0xE91E0030E8FE0038ULL, 0xE91E0028E8FE0030ULL },
+	{ 0, 0xE8FE0038EBFE0018ULL, 0xE8FE0030EBEB0050ULL },
 
-	// Part 2
-	{ LV1_LPAR_OFFSET2 + 0,  0xE81E0020E93E0028ULL, 0xE81E0018E93E0020ULL},
-	{ LV1_LPAR_OFFSET2 + 8,  0xE95E0030E91E0038ULL, 0xE95E0028E91E0030ULL},
-	{ LV1_LPAR_OFFSET2 + 16, 0xE8FE0040E8DE0048ULL, 0xE8FE0038E8DE0040ULL},
-	{ LV1_LPAR_OFFSET2 + 20, 0xE8DE0048EBFE0018ULL, 0xE8DE0040EBEB0050ULL},
+	{ 0, 0xE81E0020E93E0028ULL, 0xE81E0018E93E0020ULL},
+	{ 0, 0xE95E0030E91E0038ULL, 0xE95E0028E91E0030ULL},
+	{ 0, 0xE8FE0040E8DE0048ULL, 0xE8FE0038E8DE0040ULL},
+	{ 0, 0xE8DE0048EBFE0018ULL, 0xE8DE0040EBEB0050ULL},
 
-	// Part 3
-	{ LV1_LPAR_OFFSET3 + 0,  0xE81E0020E93E0028ULL, 0xE81E0018E93E0020ULL},
-	{ LV1_LPAR_OFFSET3 + 8,  0xE95E0030E91E0038ULL, 0xE95E0028E91E0030ULL},
-	{ LV1_LPAR_OFFSET3 + 16, 0xE8FE0040E8DE0048ULL, 0xE8FE0038E8DE0040ULL},
-	{ LV1_LPAR_OFFSET3 + 20, 0xE8DE0048EBFE0018ULL, 0xE8DE0040EBEB0050ULL},
+	{ 0, 0xE81E0020E93E0028ULL, 0xE81E0018E93E0020ULL},
+	{ 0, 0xE95E0030E91E0038ULL, 0xE95E0028E91E0030ULL},
+	{ 0, 0xE8FE0040E8DE0048ULL, 0xE8FE0038E8DE0040ULL},
+	{ 0, 0xE8DE0048EBFE0018ULL, 0xE8DE0040EBEB0050ULL},
 };
 
 static patches_64_st lv1_pp_data[4] =
 {	
-	{ LV1_PP_OFFSET + 0,  0xE8830018E8840000ULL, 0x6400FFFF6000FFECULL },
-	{ LV1_PP_OFFSET + 8,  0xF88300C84E800020ULL, 0xF80300C04E800020ULL },
-	{ LV1_PP_OFFSET + 16, 0x38000000E8A30020ULL, 0x380000006400FFFFULL },
-	{ LV1_PP_OFFSET + 24, 0xE8830018F8A40000ULL, 0x6000FFECF80300C0ULL },
-};
-
-static patches_32_st lv1_data[10] =
-{	
-	{ LV1_LV2_OFFSET,  0x60000000, 0x419E0118 },
-	{ LV1_HTAB_OFFSET, 0x60000000, 0x41DA0054 },
-	{ LV1_INDI_OFFSET, 0x38600000, 0x7C630038 },
-	{ LV1_UM_OFFSET,   0x38000000, 0xE8180008 },
-	{ LV1_ENC_OFFSET,  0x392001DF, 0x392001CF },
-	{ LV1_PKG_OFFSET,  0x60000000, 0x419D00A8 },
-	{ LV1_SPE_OFFSET,  0x3920FFFF, 0x39200009 },
-	{ LV1_DABR_OFFSET, 0x3800000F, 0x3800000B },
-	{ LV1_GART_OFFSET, 0x38001000, 0x3C000001 },
-	{ LV1_KEYS_OFFSET, 0x60000000, 0x419D004C },
-};
+	{ 0, 0xE8830018E8840000ULL, 0x6400FFFF6000FFECULL },
+	{ 0, 0xF88300C84E800020ULL, 0xF80300C04E800020ULL },
+	{ 0, 0x38000000E8A30020ULL, 0x380000006400FFFFULL },
+	{ 0, 0xE8830018F8A40000ULL, 0x6000FFECF80300C0ULL },
+};	
 
 static patches_32_st dm_data[4] =
 {	
-	{ LV1_DM_OFFSET1, 0x60000000, 0xF8010098 },
-	{ LV1_DM_OFFSET2, 0x38600001, 0x4BFFF0E5 },
-	{ LV1_DM_OFFSET3, 0x3BE00001, 0x38A10070 },
-	{ LV1_DM_OFFSET4, 0x38600000, 0x48006065 },
+	{ 0, 0x60000000, 0xF8010098 },
+	{ 0, 0x38600001, 0x4BFFF0E5 },
+	{ 0, 0x3BE00001, 0x38A10070 },
+	{ 0, 0x38600000, 0x48006065 },
 };
 
-static patches_64_st acl_data[2] =
+static patches_32_st acl_data[2] =
 {	
-	{ LV1_ACL_OFFSET1, 0x386000012F830000ULL, 0x5463063E2F830000ULL },
-	{ LV1_ACL_OFFSET2, 0x419E001438000001ULL, 0x419E0014E8010070ULL },
+	{ 0, 0x38600001, 0x5463063E },
+	{ 0, 0x38000001, 0xE8010070 },
 };
 
-static void rtb_option(uint64_t offset)
+void offsetNotfound()
 {
-	uint32_t current_value;
+	showMessage("msg_rap2bin_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+	log("Unable to get data from LV1\nPlease contact Evilnat to add support for this FW\n");
+}
+
+int rbt_custom_lv1_patch(uint64_t pattern, uint64_t min_offset, uint64_t max_offset, uint32_t original, uint32_t patch, int suffix)
+{
+	char patch_state[120];
+	uint64_t current_value, offset, first_value;
 
 	if(checkSyscalls(LV1))
 	{
 		showMessage("msg_cfw_syscalls_disabled", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
-		return;
+		return 1;
 	}
 
 	// HEN
 	if(!is_hen())
 	{
 		showMessage("msg_hen_notsupported_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
-		return;
+		return 1;
 	}
-	
-	current_value = lv1_peek32(offset);
 
-	for(int i = 0; i < 10; i++)
-	{
-		if(offset == lv1_data[i].offset)
-		{
-			lv1_poke32(lv1_data[i].offset, (current_value == lv1_data[i].ori ? lv1_data[i].patch : lv1_data[i].ori));
-			showMessage(current_value == lv1_data[i].ori ? "msg_enabled" : "msg_disabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
-			return;
-		}
-	}
-	
-	showMessage("msg_sort_games_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+	offset = findValueinLV1(min_offset, max_offset, pattern);
+
+	if(!offset)
+		return 2;
+
+	offset = offset + suffix;
+
+	first_value = lv1_peek32(offset) == original;
+
+	current_value = lv1_peek32(offset);
+	sprintf_(patch_state, "Patching LV1: Offset 0x%X - Original: 0x%X - Patch: 0x%X\n",
+		offset, current_value, (first_value ? patch : original));
+	log(patch_state);
+
+	lv1_poke32(offset, (first_value ? patch : original));
+
+	current_value = lv1_peek32(offset) == patch;
+	showMessage(current_value ? "msg_enabled" : "msg_disabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+
+	return 0;
 }
 
 void rtb_pp()
 {
-	uint64_t current_value;
+	char patch_state[120];
+	uint64_t current_value, lv1_pp_offset, first_value;
 
 	if(checkSyscalls(LV1))
 	{
@@ -146,17 +128,27 @@ void rtb_pp()
 		return;
 	}
 
-	current_value = lv1_peek_cobra(lv1_pp_data[0].offset);
+	lv1_pp_offset = findValueinLV1(0x300000, 0x350000, 0x4BEFC43438000000ULL);
 
-	if(current_value != lv1_pp_data[0].patch)
+	if(!lv1_pp_offset)
 	{
-		for(int i = 0; i < 4; i++)
-			lv1_poke(lv1_pp_data[i].offset, lv1_pp_data[i].patch);
+		showMessage("msg_rap2bin_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		log("Unable to get data from LV1\nPlease contact Evilnat to add support for this FW\n");
+		return;
 	}
-	else
+
+	lv1_pp_data[0].offset = lv1_pp_offset + 8;
+	lv1_pp_data[1].offset = lv1_pp_offset + 16;
+	lv1_pp_data[2].offset = lv1_pp_offset + 24;
+	lv1_pp_data[3].offset = lv1_pp_offset + 32;
+
+	first_value = lv1_pp_data[0].offset == lv1_pp_data[0].ori;
+
+	for(int i = 0; i <= 3; i++)
 	{
-		for(int i = 0; i < 4; i++)
-			lv1_poke(lv1_pp_data[i].offset, lv1_pp_data[i].ori);
+		sprintf_(patch_state, "Patching LV1: Offset 0x%X\n", lv1_pp_data[i].offset);
+		log(patch_state);
+		lv1_poke(lv1_pp_data[i].offset, (first_value ? lv1_pp_data[i].patch : lv1_pp_data[i].ori));
 	}
 	
 	current_value = lv1_peek(lv1_pp_data[0].offset);
@@ -165,7 +157,9 @@ void rtb_pp()
 
 void rtb_dm()
 {
-	uint32_t current_value;
+	char patch_state[120];
+	uint32_t current_value, first_value;
+	uint64_t lv1_dm_offset;
 
 	if(checkSyscalls(LV1))
 	{
@@ -180,21 +174,39 @@ void rtb_dm()
 		return;
 	}
 
-	current_value = lv1_peek32(dm_data[0].offset);
-	
-	for(int i = 0; i < 4; i++)
-		lv1_poke32(dm_data[i].offset, (current_value == dm_data[0].ori ? dm_data[i].patch : dm_data[i].ori));
+	lv1_dm_offset = findValueinLV1(0x150000, 0x180000, 0x48004EC5E8170008ULL);
+	if(!lv1_dm_offset)
+	{
+		showMessage("msg_rap2bin_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		log("Unable to get data from LV1\nPlease contact Evilnat to add support for this FW\n");
+		return;
+	}
+
+	dm_data[0].offset = lv1_dm_offset + 0x10;
+	dm_data[1].offset = lv1_dm_offset + 0x34;
+	dm_data[2].offset = lv1_dm_offset + 0xAC;
+	dm_data[3].offset = lv1_dm_offset + 0xB4;
+
+	first_value = lv1_peek32(dm_data[0].offset) == dm_data[0].ori;
+
+	for(int i = 0; i <= 3; i++)
+	{
+		current_value = lv1_peek32(dm_data[i].offset);
+		sprintf_(patch_state, "Patching LV1: Offset 0x%X - Original: 0x%X - Patch: 0x%X\n", 
+			dm_data[i].offset, current_value, (first_value ? dm_data[i].patch : dm_data[i].ori));
+		log(patch_state);
+		lv1_poke32(dm_data[i].offset, (first_value ? dm_data[i].patch : dm_data[i].ori));
+	}
 
 	current_value = lv1_peek32(dm_data[0].offset);
-	showMessage(current_value == dm_data[0].ori ? "msg_disabled" : "msg_enabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
+	showMessage(current_value == dm_data[0].patch ? "msg_enabled" : "msg_disabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 }
 
 void rtb_smgo()
 {
-	int isNor, targetID;
-	int current_value;
+	char patch_state[120];
+	uint32_t current_value, current_value2, first_value;
 	uint64_t offset;
-	uint8_t	idps0[IDPS_SIZE];
 
 	if(checkSyscalls(LV1))
 	{
@@ -209,36 +221,49 @@ void rtb_smgo()
 		return;
 	}
 
-	isNor = check_flash_type();
-	targetID = getTargetID(1);
-
-	if(targetID != 0x82 && isNor)
-		offset = 0x80000000001194CCULL;
-	else if(targetID == 0x82 && isNor)
-		offset = 0x80000000001504CCULL;
-	else if(targetID != 0x82 && !isNor)
-		offset = 0x80000000007814CCULL;
-	else if(targetID == 0x82 && !isNor)
-		offset = 0x80000000003784CCULL;
+	offset = findValueinLV1(0x115000, 0x120000, 0x39200003F91F0068ULL);
+	if(!offset)
+		offset = findValueinLV1(0x150000, 0x160000, 0x39200003F91F0068ULL);
+	if(!offset)
+		offset = findValueinLV1(0x240000, 0x24000, 0x39200003F91F0068ULL);
+	if(!offset)
+		offset = findValueinLV1(0x375000, 0x380000, 0x39200003F91F0068ULL);
+	if(!offset)
+		offset = findValueinLV1(0x780000, 0x782000, 0x39200003F91F0068ULL);
 
 	if(!offset)
 	{
-		showMessage("msg_sort_games_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		showMessage("msg_rap2bin_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		log("Unable to get data from LV1\nPlease contact Evilnat to add support for this FW\n");
 		return;
 	}
 
-	current_value = lv1_peek32(offset) == 0x640003FB;
-	lv1_poke32(offset, (current_value ? 0x6400FFFF : 0x640003FB));
-	lv1_poke32(offset + 8, (current_value ? 0x6000FFFE : 0x6000F7EE));
+	offset = offset + 8;
+
+	first_value = lv1_peek32(offset) == 0x640003FB;
+
+	current_value = lv1_peek32(offset);
+	sprintf_(patch_state, "Patching LV1: Offset 0x%X - Original: 0x%X - Patch: 0x%X\n",
+		offset, current_value, (first_value ? 0x6400FFFF : 0x640003FB));
+	log(patch_state);
+
+	current_value2 = lv1_peek32(offset + 8);
+	sprintf_(patch_state, "Patching LV1: Offset 0x%X - Original: 0x%X - Patch: 0x%X\n",
+		offset + 8, current_value2, (first_value ? 0x6000FFFE : 0x6000F7EE));
+	log(patch_state);
+
+	lv1_poke32(offset, (current_value == 0x6400FFFF ? 0x640003FB : 0x6400FFFF));
+	lv1_poke32(offset + 8, (current_value == 0x6400FFFF ? 0x6000F7EE : 0x6000FFFE));
+
+	current_value = lv1_peek32(offset) == 0x6400FFFF;
 	showMessage(current_value ? "msg_enabled" : "msg_disabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 }
 
 void rtb_go()
 {
-	int isNor, targetID;
-	int current_value;
+	char patch_state[120];
+	uint32_t current_value, first_value;
 	uint64_t offset;
-	uint8_t	idps0[IDPS_SIZE];
 
 	if(checkSyscalls(LV1))
 	{
@@ -253,31 +278,39 @@ void rtb_go()
 		return;
 	}
 
-	isNor = check_flash_type();
-	targetID = getTargetID(1);
-
-	if(targetID != 0x82 && isNor)
-		offset = 0x8000000000168090ULL;
-	else if(targetID != 0x82 && !isNor)
-		offset = 0x800000000011C090ULL;
-	else if(targetID == 0x82)
-		offset = 0x800000000011B090ULL;	
+	offset = findValueinLV1(0x110000, 0x120000, 0x386000FF4800DCF1ULL);
+	if(!offset)
+		offset = findValueinLV1(0x160000, 0x170000, 0x386000FF4800DCF1ULL);
+	if(!offset)
+		offset = findValueinLV1(0x1B0000, 0x1C0000, 0x386000FF4800DCF1ULL);
 
 	if(!offset)
 	{
-		showMessage("msg_sort_games_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		showMessage("msg_rap2bin_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		log("Unable to get data from LV1\nPlease contact Evilnat to add support for this FW\n");
 		return;
 	}
 
-	current_value = lv1_peek32(offset) == 0x38600000;
-	lv1_poke32(offset, (current_value ? 0x38600001 : 0x38600000));
-	lv1_poke32(offset + 8, (current_value ? 0x38600001 : 0x38600000));
+	offset = offset + 8;
+
+	first_value = lv1_peek32(offset) == 0x38600000;
+
+	current_value = lv1_peek32(offset);
+	sprintf_(patch_state, "Patching LV1: Offset 0x%X - Original: 0x%X - Patch: 0x%X\n",
+		offset, current_value, (first_value ? 0x38600001 : 0x38600000));
+	log(patch_state);
+
+	lv1_poke32(offset, (first_value ? 0x38600001 : 0x38600000));
+
+	current_value = lv1_peek32(offset) == 0x38600001;
 	showMessage(current_value ? "msg_enabled" : "msg_disabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 }
 
 void rtb_lpar()
 {
-	uint64_t current_value;	
+	char patch_state[120];
+	uint64_t current_value, first_value;	
+	uint64_t lv1_par_offset1, lv1_par_offset2, lv1_par_offset3;	
 
 	if(checkSyscalls(LV1))
 	{
@@ -292,10 +325,39 @@ void rtb_lpar()
 		return;
 	}
 
-	current_value = lv1_peek(lv1_lpar_data[0].offset);
+	lv1_par_offset1 = findValueinLV1(0x2E0000, 0x300000, 0xE87D0000FBE100C8ULL);
+	lv1_par_offset2 = findValueinLV1(0x2E0000, 0x300000, 0x4BFFFF683D2D0000ULL);
+	lv1_par_offset3 = findValueinLV1(0x2E0000, 0x300000, 0x6063FFFAEBE100E8ULL);
 
-	for(int i = 0; i < 11; i++)
-		lv1_poke(lv1_lpar_data[i].offset, (current_value == lv1_lpar_data[0].ori ? lv1_lpar_data[i].patch : lv1_lpar_data[i].ori));
+	if(!lv1_par_offset1 || !lv1_par_offset2 || !lv1_par_offset3)
+	{
+		showMessage("msg_rap2bin_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		log("Unable to get data from LV1\nPlease contact Evilnat to add support for this FW\n");
+		return;
+	}
+
+	lv1_lpar_data[0].offset = lv1_par_offset1 + 8;
+	lv1_lpar_data[1].offset = lv1_par_offset1 + 0x10;
+	lv1_lpar_data[2].offset = lv1_par_offset1 + 0x14;
+
+	lv1_lpar_data[3].offset = lv1_par_offset2 + 0x38;
+	lv1_lpar_data[4].offset = lv1_par_offset2 + 0x40;
+	lv1_lpar_data[5].offset = lv1_par_offset2 + 0x48;
+	lv1_lpar_data[6].offset = lv1_par_offset2 + 0x4C;
+
+	lv1_lpar_data[7].offset = lv1_par_offset3 + 0x70;
+	lv1_lpar_data[8].offset = lv1_par_offset3 + 0x78;
+	lv1_lpar_data[9].offset = lv1_par_offset3 + 0x80;
+	lv1_lpar_data[10].offset = lv1_par_offset3 + 0x84;
+
+	first_value = lv1_peek(lv1_lpar_data[0].offset) == lv1_lpar_data[0].ori;
+
+	for(int i = 0; i <= 10; i++)
+	{		
+		sprintf_(patch_state, "Patching LV1: Offset 0x%X\n", lv1_lpar_data[i].offset);
+		log(patch_state);
+		lv1_poke(lv1_lpar_data[i].offset, (first_value ? lv1_lpar_data[i].patch : lv1_lpar_data[i].ori));
+	}
 
 	current_value = lv1_peek(lv1_lpar_data[0].offset);
 	showMessage(current_value == lv1_lpar_data[0].ori ? "msg_disabled" : "msg_enabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
@@ -303,7 +365,9 @@ void rtb_lpar()
 
 void rtb_acl()
 {
-	uint64_t current_value;
+	char patch_state[120];
+	uint32_t current_value, first_value;
+	uint64_t acl_data_offset;	
 
 	if(checkSyscalls(LV1))
 	{
@@ -318,12 +382,30 @@ void rtb_acl()
 		return;
 	}
 
-	current_value = lv1_peek(acl_data[0].offset);
+	acl_data_offset = findValueinLV1(0x250000, 0x280000, 0x38A100704805E7B5ULL);
 
-	for(int i = 0; i < 2; i++)
-		lv1_poke(acl_data[i].offset, (current_value == acl_data[0].ori ? acl_data[i].patch : acl_data[i].ori));
+	if(!acl_data_offset)
+	{
+		showMessage("msg_rap2bin_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
+		log("Unable to get data from LV1\nPlease contact Evilnat to add support for this FW\n");
+		return;
+	}
 
-	current_value = lv1_peek(acl_data[0].offset);
+	acl_data[0].offset = acl_data_offset + 8;
+	acl_data[1].offset = acl_data_offset + 0x14;
+
+	first_value = lv1_peek32(acl_data[0].offset) == acl_data[0].ori;
+
+	for(int i = 0; i <= 1; i++)
+	{
+		current_value = lv1_peek32(acl_data[i].offset);
+		sprintf_(patch_state, "Patching LV1: Offset 0x%X - Original: 0x%X - Patch: 0x%X\n", 
+			acl_data[i].offset, current_value, (first_value ? acl_data[i].patch : acl_data[i].ori));
+		log(patch_state);
+		lv1_poke32(acl_data[i].offset, (first_value ? acl_data[i].patch : acl_data[i].ori));
+	}
+	
+	current_value = lv1_peek32(acl_data[0].offset);
 	showMessage(current_value == acl_data[0].ori ? "msg_disabled" : "msg_enabled", (char *)XAI_PLUGIN, (char *)TEX_SUCCESS);
 }
 
