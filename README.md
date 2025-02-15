@@ -17,7 +17,18 @@ The application uses beeps to let the user know if the update has been completed
 - **TRIPLE BEEP:** Error when updating
 
 
-## Updater package version: 1.6 :package: :new:
+## Updater package version: 1.8 :package: :new:
+- [XAI] Firmware independant while patching LV1 for options:
+     + Enable/Disable QA Flags
+	 + Dump Token Seed
+	 + Rebug Toolbox options
+- [XAI] Added support for CFW 4.84 DECR
+- [XAI] Merged options [Enable/Disable TrophyUnlocker] in [Toggle TrophyUnlocker]
+- [XAI] Merged options [Enable/Disable PSN Protection] in [Toggle PSN Protection]
+- [XAI] Updated Import Licenses to rap.bin option
+- [XAI] Updated Export Licenses to rap.bin option
+
+## Updater package version: 1.6
 - Fixed minor bug wrongly detecting that CFW syscalls were disabled while using [Dump RAM] option
 
 ## Updater package version: 1.3
