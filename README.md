@@ -5,9 +5,10 @@ You can check and download the latest xai_plugin update package
 
 If you want to install a PKG manually, make sure it is the one for your version, otherwise it will not work:
 
-- **CFW PEX/D-PEX:** xai_updater.pkg
-- **CFW CEX:** xai_updater_cex.pkg
-- **CFW DEX:** xai_updater_dex.pkg
+- **CFW 4.91 PEX/D-PEX:** xai_updater.pkg
+- **CFW 4.81-4.89/4.91:** xai_updater_cex.pkg
+- **CFW 4.91 DEX:** xai_updater_dex.pkg
+- **CFW 4.84 REBUG DECR LE:** xai_updater_rebug_decr.pkg
 
 
 The application uses beeps to let the user know if the update has been completed successfully or not, this is the list of beeps:
@@ -17,7 +18,11 @@ The application uses beeps to let the user know if the update has been completed
 - **TRIPLE BEEP:** Error when updating
 
 
-## Updater package version: 1.8 :package: :new:
+## Updater package version: 1.9 :package: :new:
+- [XAI] Added support for dumping decrypted metldr (Thanks to **flatz** and **CMX**)
+- Added xai_plugin update PKG for Rebug 4.84 DECR
+
+## Updater package version: 1.8 :package:
 - [XAI] Firmware independant while patching LV1 for options:
      + Enable/Disable QA Flags
 	 + Dump Token Seed
