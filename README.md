@@ -18,11 +18,14 @@ The application uses beeps to let the user know if the update has been completed
 - **TRIPLE BEEP:** Error when updating
 
 
-## Updater package version: 1.9 :package: :new:
+## Updater package version: 1.9 HOTFIX :package: :new:
+- [XAI] Fixed [Dump ERK] option not working on some PS3s
+
+## Updater package version: 1.9
 - [XAI] Added support for dumping decrypted metldr (Thanks to **flatz** and **CMX**)
 - Added xai_plugin update PKG for Rebug 4.84 DECR
 
-## Updater package version: 1.8 :package:
+## Updater package version: 1.8
 - [XAI] Firmware independant while patching LV1 for options:
      + Enable/Disable QA Flags
 	 + Dump Token Seed
