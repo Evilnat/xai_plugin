@@ -19,9 +19,10 @@ The application uses beeps to let the user know if the update has been completed
 
 
 ## Updater package version: 1.9 HOTFIX :package: :new:
-- [XAI] Fixed [Dump ERK] option not working on some PS3s
+- [XAI] Improved metldr dump
 
 ## Updater package version: 1.9
+- [XAI] Fixed [Dump ERK] option not working on some PS3s
 - [XAI] Added support for dumping decrypted metldr (Thanks to **flatz** and **CMX**)
 - Added xai_plugin update PKG for Rebug 4.84 DECR
 
