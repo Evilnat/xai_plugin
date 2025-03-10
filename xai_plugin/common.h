@@ -16,6 +16,7 @@
 #define SYSCALL_OPD_OFFSET(n)		lv2_peek(SYSCALL_OPD_PTR_OFFSET(n))
 
 #define EID_ROOT_KEY_SIZE			0x30
+#define METLDR_SIZE					0x10000
 
 /* Firmware specific defines */
 #define TOC_OFFSET					KERNEL_ADDRESS(0x34FBB0)

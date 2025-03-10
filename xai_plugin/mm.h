@@ -34,16 +34,6 @@
 #define PAGE_SIZE_1MB  20
 #define PAGE_SIZE_16MB 24
 
-#define MM_LOAD_BASE(ptr, offset) \
-	__asm__ __volatile__ ( \
-		"li %0, 1;" \
-		"rldicr %0, %0, 63, 0;" \
-		"oris %0, %0, %1;" \
-		"ori %0, %0, %2" \
-		: "=r"(ptr) \
-		: "g"(((offset) >> 16) & 0xFFFF), "g"((offset) & 0xFFFF) \
-	)
-
 #define MM_EA2VA(ea)	((ea) & ~0x8000000000000000ULL)
 
 int mm_insert_htab_entry(uint64_t va_addr, uint64_t lpar_addr, uint64_t prot, uint64_t * index);

@@ -988,7 +988,7 @@ int dump_lv(int lv)
 	return 0;
 }
 
-int dumpERK()
+int dumpERK(int mode)
 {
 	uint32_t firmware;
 	check_firmware(&firmware);
@@ -1012,9 +1012,9 @@ int dumpERK()
 		return -1;
 	}
 
-	showMessage("msg_dumping_erk", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
+	showMessage((mode == ERK ? "msg_dumping_erk" : "msg_dumping_metldr"), (char *)XAI_PLUGIN, (char *)TEX_INFO2);
 
-	dumperk();	
+	dumperk(mode);	
 }
 
 //	From sguerrini97's dump_sysrom

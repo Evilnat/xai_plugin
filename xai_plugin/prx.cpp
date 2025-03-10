@@ -16,8 +16,9 @@
 #include "cex2dex.h"
 #include "eeprom.h"
 #include "rebugtoolbox.h"
+#include "erk.h"
 
-#define XAI_VERSION "XAI Version 1.18"
+#define XAI_VERSION "XAI Version 1.20"
 
 SYS_MODULE_INFO(xai_plugin, 0, 1, 1);
 SYS_MODULE_START(_xai_plugin_prx_entry);
@@ -628,7 +629,9 @@ static void plugin_thread(uint64_t arg)
 	else if(strcmp(action_thread, "dump_ids") == 0)	
 		dump_ids();	
 	else if(strcmp(action_thread, "dump_erk") == 0)	
-		dumpERK();		
+		dumpERK(ERK);		
+	else if(strcmp(action_thread, "dump_metldr") == 0)	
+		dumpERK(METLDR);	
 	else if(strcmp(action_thread, "dump_lv2") == 0)	
 		dump_lv(LV2);		
 	else if(strcmp(action_thread, "dump_lv1") == 0)	

@@ -7,6 +7,10 @@
 #define _ERK_H_
 
 #define EID_ROOT_KEY_FILE_NAME "eid_root_key"
+#define METLDR_FILE_NAME	   "metldr"
+
+#define ERK						0
+#define METLDR					1
 
 /* Firmware specific defines */
 #define HTAB_PROTECTION_OFFSET	0x80000000002DD70CULL
@@ -26,7 +30,7 @@
 
 #define OPD_OFFSET				0x8000000000001630ULL
 
-void dumperk(void);
-int dump_eid_root_key(uint8_t output[0x30]);
+void dumperk(int mode);
+int dump_eid_root_key(uint8_t output[0x30], int mode);
 
 #endif

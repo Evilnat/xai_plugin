@@ -320,8 +320,6 @@ error:
 static int checkCurrentKernel()
 {
 	int external_cobra = 2;
-	uint8_t idps0[IDPS_SIZE];
-	CellFsStat statinfo;	
 
 	// Check if external kernel was loaded to avoid bricks
 	for(uint64_t offset = 0xA000; offset < 0x900000; offset = offset + 8)
@@ -354,15 +352,17 @@ static int checkCurrentKernel()
 	if(external_cobra == 2) // Unable to find value
 		return 0;
 
-	if(lv2_peek(CEX_OFFSET) == CEX && lv2_peek(0x80000000002FCB68ULL) == 0x323032322F30322FULL ||
-		lv2_peek(CEX_490_OFFSET) == CEX && lv2_peek(0x80000000002FCB58ULL) == 0x323032322F31322FULL ||
-		lv2_peek(CEX_OFFSET) == CEX && lv2_peek(0x80000000002FCB68ULL) == 0x323032332F31322FULL)
+	if(lv2_peek(CEX_OFFSET) == CEX && lv2_peek(0x80000000002FCB68ULL) == 0x323032322F30322FULL ||      // 2022/02/
+		lv2_peek(CEX_490_OFFSET) == CEX && lv2_peek(0x80000000002FCB58ULL) == 0x323032322F31322FULL || // 2022/12/
+		lv2_peek(CEX_OFFSET) == CEX && lv2_peek(0x80000000002FCB68ULL) == 0x323032332F31322FULL ||     // 2023/12/
+		lv2_peek(CEX_OFFSET) == CEX && lv2_peek(0x80000000002FCB68ULL) == 0x323032352F30322FULL)       // 2025/02/
 	{
 		log("checkCurrentKernel(): CEX Kernel detected\n");		
 		return 1;
 	}
 	else if(lv2_peek(DEX_OFFSET) == DEX && lv2_peek(0x800000000031F028ULL) == 0x323032332F30312FULL || // 2023/01/
-			lv2_peek(DEX_OFFSET) == DEX && lv2_peek(0x800000000031F028ULL) == 0x323032342F30322FULL)   // 2024/02/
+			lv2_peek(DEX_OFFSET) == DEX && lv2_peek(0x800000000031F028ULL) == 0x323032342F30322FULL || // 2024/02/
+			lv2_peek(DEX_OFFSET) == DEX && lv2_peek(0x800000000031F028ULL) == 0x323032352F30332FULL)   // 2025/03/
 	{
 		log("checkCurrentKernel(): DEX Kernel detected\n");
 		return 2;
@@ -824,7 +824,7 @@ void cex2dex(int mode)
 			// Dump ERK
 			int dumped = 1;
 			showMessage("msg_dumping_erk", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
-			dumped = dump_eid_root_key(eid_root_key);
+			dumped = dump_eid_root_key(eid_root_key, ERK);
 
 			if(dumped)
 			{
@@ -1066,7 +1066,7 @@ done:
 
 void swapKernel()
 {
-	int external_cobra = 0;
+	int external_cobra = 0, ret;
 	uint8_t idps0[IDPS_SIZE];
 	CellFsStat statinfo;
 	close_xml_list();
@@ -1103,40 +1103,18 @@ void swapKernel()
 	{
 		showMessage("msg_swap_kernel_wait", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
 
-		// Check if external kernel was loaded to avoid bricks
-		for(uint64_t offset = 0xA000; offset < 0x900000; offset = offset + 8)
-		{
-			// /flh/os/lv2_kernel.self
-			if(lv1_peek(offset) == 0x5053335F4C504152ULL && lv1_peek8(offset + 0x20) == 0x2F) // PS3_LPAR | '/'
-			{
-				if(lv1_peek(offset + 0x20) == 0x2F666C682F6F732FULL &&  
-					lv1_peek(offset + 0x28) == 0x6C76325F6B65726EULL && 
-					lv1_peek(offset + 0x30) == 0x656C2E73656C6600ULL)
-				{
-					external_cobra = 1;		
-					break;
-				}
-				// /local_sys0/lv2_kernel.self
-				else if(lv1_peek(offset + 0x20) == 0x2F6C6F63616C5F73ULL &&  
-					lv1_peek(offset + 0x28) == 0x7973302F6C76325FULL && 
-					lv1_peek(offset + 0x30) == 0x6B65726E656C2E73ULL && 
-					lv1_peek(offset + 0x38) == 0x656C660000000000ULL)
-				{
-					external_cobra = 0;
-					break;
-				}
-			}
-		}
+		ret = checkCurrentKernel();
 
-		if(!external_cobra)
+		if(ret == 3)
 		{
 			showMessage("msg_swap_kernel_cannot", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 			return;
 		}
 
-		if(lv2_peek(CEX_OFFSET) == CEX && lv2_peek(0x80000000002FCB68ULL) == 0x323032322F30322FULL ||
-			lv2_peek(CEX_490_OFFSET) == CEX && lv2_peek(0x80000000002FCB58ULL) == 0x323032322F31322FULL ||
-			lv2_peek(CEX_OFFSET) == CEX && lv2_peek(0x80000000002FCB68ULL) == 0x323032332F31322FULL)
+		if(lv2_peek(CEX_OFFSET) == CEX && lv2_peek(0x80000000002FCB68ULL) == 0x323032322F30322FULL ||      // 2022/02/
+			lv2_peek(CEX_490_OFFSET) == CEX && lv2_peek(0x80000000002FCB58ULL) == 0x323032322F31322FULL || // 2022/12/
+			lv2_peek(CEX_OFFSET) == CEX && lv2_peek(0x80000000002FCB68ULL) == 0x323032332F31322FULL ||     // 2023/12/
+			lv2_peek(CEX_OFFSET) == CEX && lv2_peek(0x80000000002FCB68ULL) == 0x323032352F30322FULL)       // 2025/02/
 		{
 			log("CEX detected, swapping to DEX...\n");
 
@@ -1162,7 +1140,8 @@ void swapKernel()
 				showMessage("msg_swap_kernel_error", (char *)XAI_PLUGIN, (char *)TEX_ERROR);
 		}
 		else if(lv2_peek(DEX_OFFSET) == DEX && lv2_peek(0x800000000031F028ULL) == 0x323032332F30312FULL || // 2023/01/
-				lv2_peek(DEX_OFFSET) == DEX && lv2_peek(0x800000000031F028ULL) == 0x323032342F30322FULL)   // 2024/02/
+				lv2_peek(DEX_OFFSET) == DEX && lv2_peek(0x800000000031F028ULL) == 0x323032342F30322FULL || // 2024/02/
+				lv2_peek(DEX_OFFSET) == DEX && lv2_peek(0x800000000031F028ULL) == 0x323032352F30332FULL)   // 2025/03/
 		{
 			log("DEX detected, swapping to CEX...\n");
 
@@ -1303,7 +1282,10 @@ int toggle_vsh()
 	}
 
 	if(getTargetID(1) == 0x82 && lv2_peek(DEX_OFFSET) == DEX && 
-		(lv2_peek(0x800000000031F028ULL) == 0x323032332F30312FULL || lv2_peek(0x800000000031F028ULL) == 0x323032332F30332FULL || lv2_peek(0x800000000031F028ULL) == 0x323032342F30322FULL))
+		(lv2_peek(0x800000000031F028ULL) == 0x323032332F30312FULL || //2023/01/
+		lv2_peek(0x800000000031F028ULL) == 0x323032332F30332FULL ||  //2023/03/
+		lv2_peek(0x800000000031F028ULL) == 0x323032342F30322FULL ||  //2024/02/
+		lv2_peek(0x800000000031F028ULL) == 0x323032352F30332FULL))   //2025/03/
 	{
 		showMessage("msg_toggle_vsh_canceled", (char *)XAI_PLUGIN, (char *)TEX_INFO2);		
 		return 1;
@@ -1440,7 +1422,7 @@ int enable_dex_support()
 			// Dump ERK
 			int dumped = 1;
 			showMessage("msg_dumping_erk", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
-			dumped = dump_eid_root_key(eid_root_key);
+			dumped = dump_eid_root_key(eid_root_key, ERK);
 
 			if(dumped)
 			{
@@ -1644,7 +1626,7 @@ int disable_dex_support()
 	uint64_t start_flash_sector = 0x178;
 	uint64_t device = FLASH_DEVICE_NOR;	
 
-	uint8_t eid0_buf[0x200], eid_backup[0x200];;
+	uint8_t eid0_buf[0x200], eid_backup[0x200];
 	uint8_t eid_root_key[EID_ROOT_KEY_SIZE];
 	uint8_t idps0[IDPS_SIZE];
 	uint8_t key[0x10];	
@@ -1700,7 +1682,7 @@ int disable_dex_support()
 			// Dump ERK
 			int dumped = 1;
 			showMessage("msg_dumping_erk", (char *)XAI_PLUGIN, (char *)TEX_INFO2);
-			dumped = dump_eid_root_key(eid_root_key);
+			dumped = dump_eid_root_key(eid_root_key, ERK);
 
 			if(dumped)
 			{

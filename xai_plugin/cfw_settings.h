@@ -288,7 +288,7 @@ void remove_license();
 
 int create_syscalls();
 int dump_lv(int lv);
-int dumpERK();
+int dumpERK(int mode);
 int dump_sysrom();
 int removeSysHistory();
 void checkSyscall(int syscall);

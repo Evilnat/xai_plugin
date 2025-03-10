@@ -3,7 +3,7 @@ XAI Plugin - Original Source by mysis [https://www.psx-place.com/threads/custom-
 
 Remember that videorec.sprx and xai_plugin.sprx must be signed after compiled
 
-This version of xai_plugin was modified to be used on **CFW 4.91.3 Evilnat**
+This version of xai_plugin was modified to be used on **CFW 4.92 Evilnat**
 
 Repositories used:
 [sguerrini97's setup_flash_for_otheros](https://github.com/sguerrini97/psl1ghtv2_ports/tree/master/setup_flash_for_otheros)
@@ -168,7 +168,6 @@ Cobra Tools
 • Allow Restore Syscalls: Allows restoring syscalls through "System Update"
 • Skip license creation: Skips overwriting license file (RIF) if it already exists
 • Create license: Creates RIF licenses from RAP files from "x:\exdata"
-• Toggle PS2 Disc Icon: Toggles between default and blue PS2 disc icon in XMB
 • Toggle Plugins: Enables/disables Cobra plugins from /dev_hdd0/boot_plugins.txt
 • Toggle OFW Mode on Boot: Toggles between CFW syscalls on boot enabled, disabled and partial
 • Toggle PS2 Disc Icon: Toggles between default and blue PS3 disc icon in XMB
@@ -176,7 +175,6 @@ Cobra Tools
 • Toggle Hidden Trophy Info: Enables or disables hidden trophies title, details and icon in XMB/INGMAE
 • Toggle Coldboot Animation: Enables or disables the coldboot animation and sound on boot
 • Toggle Epilepsy Warning: Enables or disables epilepsy warning on boot
-• Toggle External Cobra: Enables/disables loading external Cobra payloads and plugins from /dev_usb000
 • Toggle Cobra Version: Toggles between release and debug versions (reboot is required)
 • Toggle Cobra: Enables or disables Cobra (reboot is required)
 
@@ -207,6 +205,7 @@ Dump Tools
 • Dump SYSROM: Dumps SYSROM to /dev_usb or /dev_hdd0/tmp
 • Dump EEPROM: Dumps 256 bytes of EEPROM data from offsets 0x2F00, 0x3000, 0x48000, 0x48800, 0x48C00 and 0x48D00 in /dev_usb or /dev_hdd0/tmp
 • Dump ERK: Dumps eid_root_key to /dev_usb or /dev_hdd0/tmp
+• Dump METLDR: Dumps decrypted metldr to /dev_usb or /dev_hdd0/tmp
 • Dump SYSCON Error Log: Dumps current SYSCON error log in /dev_usb or /dev_hdd0/tmp
 • Dump Token Seed: Dumps current token seed in /dev_usb or /dev_hdd0/tmp
 • Log KLicense usage: Saves filename and klicensee to log file
@@ -265,4 +264,9 @@ Service Tools > Advanced Service Tools
 • Enable Support for DEX OFW: Enables OFW DEX installation on converted PS3 Retail
 • Disable Support for DEX OFW: Disables OFW DEX installation on converted PS3 Retail
 • Load LV2 kernel: Loads lv2_kernel.self file from /dev_usb000 or /dev_flash
+
+Updates
+• xai_plugin: Downloads the latest update of xai plugin
+• PS2 EMUs Cobra: Downloads the latest update of PS1/PS2 EMUs Cobra
+• PS2 EMUs MOD: Downloads the latest update of PS1/PS2 EMUs MOD by mrjaredbeta and kozarovv
 ```
