@@ -5,9 +5,9 @@ You can check and download the latest xai_plugin update package
 
 If you want to install a PKG manually, make sure it is the one for your version, otherwise it will not work:
 
-- **CFW 4.91 PEX/D-PEX:** xai_updater.pkg
-- **CFW 4.81-4.89/4.91:** xai_updater_cex.pkg
-- **CFW 4.91 DEX:** xai_updater_dex.pkg
+- **CFW 4.92 PEX/D-PEX:** xai_updater.pkg
+- **CFW 4.81-4.89/4.92:** xai_updater_cex.pkg
+- **CFW 4.92 DEX:** xai_updater_dex.pkg
 - **CFW 4.84 REBUG DECR LE:** xai_updater_rebug_decr.pkg
 
 
@@ -18,12 +18,15 @@ The application uses beeps to let the user know if the update has been completed
 - **TRIPLE BEEP:** Error when updating
 
 
-## Updater package version: 1.9 HOTFIX :package: :new:
+## Updater package version: 2.0 :package: :new:
+- [XAI] Added support for CFW 4.92
+
+## Updater package version: 1.9 HOTFIX
 - [XAI] Improved metldr dump
 
 ## Updater package version: 1.9
 - [XAI] Fixed [Dump ERK] option not working on some PS3s
-- [XAI] Added support for dumping decrypted metldr (Thanks to **flatz** and **CMX**)
+- [XAI] Added support for dumping decrypted metldr (Thanks to **Mathieulh**, **flatz**, **CMX**, **zecoxao** and **M4j0r**)
 - Added xai_plugin update PKG for Rebug 4.84 DECR
 
 ## Updater package version: 1.8
