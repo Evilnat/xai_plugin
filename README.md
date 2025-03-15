@@ -18,18 +18,21 @@ The application uses beeps to let the user know if the update has been completed
 - **TRIPLE BEEP:** Error when updating
 
 
-## Updater package version: 2.0 :package: :new:
+## Updater package version: 1.21 :package: :new:
+- [XAI] Merged options [Resize VFLASH/NAND Regions] and [Install Petitboot] in [Install OtherOS]
+- [XAI] Added [CFW 4.92 Fixes] in xai_plugin
+	* download_plugin.sprx: Fixed error while downloading to internal HDD
+
+## Updater package version: 1.20
 - [XAI] Added support for CFW 4.92
 
-## Updater package version: 1.9 HOTFIX
+## Updater package version: 1.19
 - [XAI] Improved metldr dump
-
-## Updater package version: 1.9
 - [XAI] Fixed [Dump ERK] option not working on some PS3s
 - [XAI] Added support for dumping decrypted metldr (Thanks to **Mathieulh**, **flatz**, **CMX**, **zecoxao** and **M4j0r**)
 - Added xai_plugin update PKG for Rebug 4.84 DECR
 
-## Updater package version: 1.8
+## Updater package version: 1.18
 - [XAI] Firmware independant while patching LV1 for options:
      + Enable/Disable QA Flags
 	 + Dump Token Seed
@@ -40,10 +43,10 @@ The application uses beeps to let the user know if the update has been completed
 - [XAI] Updated Import Licenses to rap.bin option
 - [XAI] Updated Export Licenses to rap.bin option
 
-## Updater package version: 1.6
+## Updater package version: 1.16
 - Fixed minor bug wrongly detecting that CFW syscalls were disabled while using [Dump RAM] option
 
-## Updater package version: 1.3
+## Updater package version: 1.13
 - Now Cobra shows the correct disc image for PS2 (blue disc icon)
 - Added option to export RAP license of RIF licenses in current user account
 - Fixed [Check GPU/VRAM clock speed] option
@@ -55,12 +58,12 @@ The application uses beeps to let the user know if the update has been completed
 - Updated french language in xai_plugin (thanks to EimGdt and Chronoss09)
 - Updated OtherOS and PSN icon (thanks to HackZy01)
 
-## Updater package version: 1.2
+## Updater package version: 1.12
  - Updated Cobra version to 8.4
  - Use PS2 FAN Modes on PS2 Classic games (make sure webMAN MOD FAN Control is disabled)
 
-## Updater package version: 1.1
+## Updater package version: 1.11
  - Initial release
 
-## Updater package version: 1.1
+## Updater package version: 1.0
 - Test package
